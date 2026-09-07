@@ -1,0 +1,1516 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="タイムカード">
+<title>タイムカード</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #F4F6FA; --panel: #FFFFFF; --panel-solid: #FFFFFF;
+    --border: #E2E5EE; --border-soft: #EEF0F6;
+    --ink: #1B1E2B; --ink-soft: #565B74; --muted: #8A8FA6;
+    --accent: #4F46E5; --accent-2: #0891B2; --admin: #B45309;
+    --danger: #DC2626; --danger-soft: #FEF2F2;
+    --grad-primary: linear-gradient(135deg, #4F46E5 0%, #0891B2 100%);
+    --grad-warm: linear-gradient(135deg, #F59E0B 0%, #DC2626 100%);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; min-height: 100%; }
+  body {
+    background: #EEF1F7;
+    font-family: 'Inter', sans-serif; color: var(--ink);
+    display: flex; justify-content: center; align-items: flex-start; padding: 48px 16px;
+  }
+  .desk { width: 100%; max-width: 980px; }
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--border); border-radius: 26px;
+    box-shadow: 0 24px 60px -28px rgba(30,35,60,0.22); overflow: hidden;
+  }
+  .card-top { padding: 34px 34px 28px; text-align: center; }
+  .top-row { display: flex; justify-content: space-between; align-items: baseline; text-align: left; }
+  .card-label { font-family: 'Space Grotesk', sans-serif; font-size: 13px; letter-spacing: 0.06em; color: var(--accent-2); font-weight: 600; }
+  .card-label.admin-active { color: var(--admin); }
+  .admin-controls { display: flex; gap: 14px; align-items: baseline; }
+  .link-btn {
+    background: none; border: none; font-family: 'Inter', sans-serif;
+    font-size: 12px; color: var(--muted); text-decoration: none; cursor: pointer; padding: 0;
+    transition: color 0.15s ease;
+  }
+  .link-btn:hover { color: var(--accent-2); }
+  .date { margin-top: 8px; font-size: 14px; color: var(--muted); text-align: center; }
+  .people-label { margin-top: 22px; font-size: 12px; color: var(--muted); text-align: left; }
+  .people-row { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip {
+    display: flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 999px;
+    font-family: 'Inter', sans-serif; font-size: 14px; font-weight: 500;
+    border: 1px solid var(--border); background: #F8F9FC; color: var(--ink); cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .chip:hover { border-color: var(--accent-2); }
+  .chip.selected { background: var(--grad-primary); border-color: transparent; color: #fff; box-shadow: 0 6px 16px -6px rgba(79,70,229,0.5); }
+  .chip .remove { font-size: 12px; line-height: 1; opacity: 0.6; padding-left: 2px; }
+  .chip .remove:hover { opacity: 1; }
+  .chip.add-chip { border-style: dashed; color: var(--muted); background: transparent; }
+  .inline-form { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 8px; text-align: left; }
+  .inline-form input, .inline-form select {
+    font-family: 'Inter', sans-serif; font-size: 16px; padding: 10px 12px; border-radius: 10px;
+    border: 1px solid var(--border); background: #FBFCFE; color: var(--ink);
+  }
+  .inline-form input::placeholder { color: var(--muted); }
+  .inline-form button {
+    font-family: 'Inter', sans-serif; font-size: 14px; font-weight: 600; padding: 9px 16px; border-radius: 10px;
+    border: none; background: var(--grad-primary); color: #fff; cursor: pointer;
+  }
+  .inline-form button.secondary { background: transparent; color: var(--muted); border: 1px solid var(--border); }
+  .field-note { width: 100%; font-size: 11px; color: var(--muted); }
+  .personal-row { display: flex; justify-content: space-between; align-items: center; margin-top: 22px; text-align: left; }
+  #personalGreeting { font-family: 'Space Grotesk', sans-serif; font-size: 15px; font-weight: 600; color: var(--ink); }
+  .clock {
+    margin-top: 26px; font-family: 'IBM Plex Mono', monospace; font-variant-numeric: tabular-nums;
+    font-size: 50px; font-weight: 500; letter-spacing: 0.01em; line-height: 1; color: var(--ink);
+  }
+  .status-line { margin-top: 12px; font-size: 14px; color: var(--ink-soft); min-height: 20px; }
+  .notices-panel { margin-top: 16px; text-align: left; }
+  .notices-panel.hidden { display: none; }
+  .notice-error { background: var(--danger-soft); border: 1px solid #FCA5A5; color: #B91C1C; border-radius: 12px; padding: 10px 14px; font-size: 13px; margin-bottom: 8px; }
+  .notice-message { background: #F8F9FC; border: 1px solid var(--border); border-radius: 12px; padding: 10px 14px; font-size: 13px; margin-bottom: 8px; color: var(--ink-soft); }
+  .notice-meta { font-size: 11px; color: var(--muted); margin-top: 4px; }
+  .location-field { margin-top: 18px; text-align: left; }
+  .location-field label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+  .location-field input {
+    width: 100%; font-family: 'Inter', sans-serif; font-size: 16px; padding: 12px 14px; border-radius: 12px;
+    border: 1px solid var(--border); background: #FBFCFE; color: var(--ink);
+  }
+  .punch-btn {
+    margin-top: 22px; width: 100%; padding: 18px 0; border: none; border-radius: 16px;
+    font-family: 'Space Grotesk', sans-serif; font-size: 19px; font-weight: 600; letter-spacing: 0.01em;
+    color: #fff; background: var(--grad-primary); cursor: pointer; position: relative;
+    box-shadow: 0 12px 26px -10px rgba(79,70,229,0.45);
+    transition: transform 0.08s ease, box-shadow 0.2s ease;
+  }
+  .punch-btn:active { transform: scale(0.98); }
+  .punch-btn:disabled { opacity: 0.45; cursor: default; box-shadow: none; }
+  .punch-btn.out-mode { background: var(--grad-warm); box-shadow: 0 12px 26px -10px rgba(220,38,38,0.4); }
+  .punch-btn.stamped::after { content: ''; position: absolute; inset: 0; border-radius: 16px; background: rgba(255,255,255,0.35); animation: flash 0.4s ease-out; }
+  @keyframes flash { from { opacity: 1; } to { opacity: 0; } }
+  .today-total { margin-top: 18px; font-size: 14px; color: var(--ink-soft); }
+  .today-total strong { font-family: 'IBM Plex Mono', monospace; color: var(--accent-2); font-weight: 600; }
+  .leave-panel { margin-top: 18px; text-align: left; padding-top: 16px; border-top: 1px solid var(--border-soft); }
+  .leave-balance { font-size: 14px; color: var(--ink-soft); margin-bottom: 6px; }
+  .leave-history { margin-top: 10px; }
+  .auth-divider { display: flex; align-items: center; gap: 10px; margin: 16px 0; color: var(--muted); font-size: 12px; }
+  .auth-divider::before, .auth-divider::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+  .perforation { height: 1px; background: var(--border); }
+  .card-bottom { padding: 22px 34px 34px; background: #FBFCFE; }
+  .tab-bar { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+  .tab-bar.hidden { display: none; }
+  .tab-btn {
+    font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 600; padding: 9px 16px; border-radius: 999px;
+    border: 1px solid var(--border); background: #fff; color: var(--ink-soft); cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .tab-btn:hover { border-color: var(--accent-2); color: var(--ink); }
+  .tab-btn.active { background: var(--grad-primary); border-color: transparent; color: #fff; box-shadow: 0 6px 16px -8px rgba(79,70,229,0.5); }
+  .period-toggle { display: flex; gap: 4px; }
+  .period-toggle .tab-btn { padding: 6px 12px; font-size: 12px; }
+  .calendar-section { text-align: left; }
+  .calendar-section.hidden { display: none; }
+  .cal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+  .cal-header span { font-family: 'Space Grotesk', sans-serif; font-size: 14px; font-weight: 600; color: var(--ink); }
+  .nav-btn {
+    background: #fff; border: 1px solid var(--border); color: var(--ink); border-radius: 8px;
+    font-family: 'IBM Plex Mono', monospace; font-size: 13px; padding: 4px 12px; cursor: pointer; transition: all 0.15s ease;
+  }
+  .nav-btn:hover { background: var(--grad-primary); border-color: transparent; color: #fff; }
+  .cal-weekdays { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; font-size: 11px; color: var(--muted); margin-bottom: 6px; }
+  .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+  .cal-cell {
+    position: relative; aspect-ratio: 1; background: #fff; border: 1px solid var(--border-soft); border-radius: 10px;
+    display: flex; align-items: flex-start; justify-content: flex-start; padding: 5px;
+    cursor: pointer; font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--ink-soft); transition: all 0.15s ease;
+  }
+  .cal-cell:hover { border-color: var(--accent-2); }
+  .cal-cell.empty { background: transparent; border: none; cursor: default; }
+  .cal-cell.today { border-color: var(--accent-2); border-width: 2px; }
+  .cal-cell.selected { background: var(--grad-primary); color: #fff; border-color: transparent; }
+  .cal-cell.has-records:not(.selected) { color: var(--ink); font-weight: 600; }
+  .cal-badge { position: absolute; bottom: 4px; right: 4px; background: var(--danger); color: #fff; font-size: 10px; line-height: 1; padding: 2px 5px; border-radius: 999px; }
+  .cal-cell.selected .cal-badge { background: rgba(255,255,255,0.35); color: #fff; }
+  .cal-detail { margin-top: 16px; }
+  .cal-detail-title { font-family: 'Space Grotesk', sans-serif; font-size: 13px; font-weight: 600; color: var(--accent-2); margin-bottom: 8px; }
+  .cal-empty { font-size: 13px; color: var(--muted); padding: 4px 0; }
+  .log-header { display: flex; justify-content: space-between; align-items: baseline; margin: 22px 0 12px; }
+  .log-header span { font-family: 'Space Grotesk', sans-serif; font-size: 14px; font-weight: 600; color: var(--ink); }
+  .undo-btn { background: none; border: none; font-family: 'Inter', sans-serif; font-size: 12px; color: var(--muted); text-decoration: none; cursor: pointer; padding: 0; }
+  .undo-btn:hover { color: var(--danger); }
+  .undo-btn.hidden { display: none; }
+  .log-group-date { font-family: 'Space Grotesk', sans-serif; font-size: 12px; color: var(--accent-2); font-weight: 600; margin: 16px 0 8px; }
+  .log-group-date:first-child { margin-top: 0; }
+  .log-entry { padding: 9px 0; border-bottom: 1px solid var(--border-soft); }
+  .log-entry:last-child { border-bottom: none; }
+  .log-row { display: flex; align-items: center; gap: 10px; font-size: 14px; }
+  .log-time { font-family: 'IBM Plex Mono', monospace; width: 52px; flex-shrink: 0; color: var(--ink); }
+  .log-name { width: 84px; flex-shrink: 0; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .log-type { width: 40px; flex-shrink: 0; font-weight: 600; }
+  .log-type.in { color: var(--accent-2); }
+  .log-type.out { color: var(--danger); }
+  .log-duration { margin-left: auto; font-family: 'IBM Plex Mono', monospace; font-size: 13px; color: var(--muted); }
+  .log-location { font-size: 12px; color: var(--muted); margin-top: 4px; margin-left: 62px; }
+  .log-location a { color: var(--accent-2); }
+  .log-actions { margin-top: 4px; margin-left: 62px; display: flex; gap: 14px; }
+  .log-actions .link-btn { font-size: 11px; }
+  .log-edit-history { margin-top: 6px; margin-left: 62px; font-size: 12px; color: var(--muted); }
+  .log-edit-history.hidden { display: none; }
+  .edit-history-line { padding: 2px 0; }
+  .empty-state { font-size: 14px; color: var(--muted); padding: 6px 0; }
+  .hidden { display: none !important; }
+  select {
+    font-family: 'Inter', sans-serif; font-size: 13px; padding: 6px 10px; border-radius: 8px;
+    border: 1px solid var(--border); background: #fff; color: var(--ink);
+  }
+  .report-section, .summary-section, .alerts-section, .leave-admin-section, .notices-admin-section, .dashboard-section { text-align: left; }
+  .report-section.hidden, .summary-section.hidden, .alerts-section.hidden, .leave-admin-section.hidden, .notices-admin-section.hidden, .dashboard-section.hidden { display: none; }
+  .dash-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 14px; margin-bottom: 28px; }
+  .dash-stat { background: #fff; border: 1px solid var(--border); border-radius: 16px; padding: 18px; }
+  .dash-stat .dash-value { font-family: 'Space Grotesk', sans-serif; font-size: 30px; font-weight: 600; color: var(--ink); line-height: 1; }
+  .dash-stat .dash-label { font-size: 12px; color: var(--muted); margin-top: 8px; }
+  .dash-stat.warn .dash-value { color: var(--admin); }
+  .dash-stat.danger .dash-value { color: var(--danger); }
+  .dash-columns { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; }
+  .dash-rank-row { display: flex; justify-content: space-between; align-items: center; padding: 9px 0; border-bottom: 1px solid var(--border-soft); font-size: 14px; }
+  .dash-rank-row:last-child { border-bottom: none; }
+  .dash-rank-name { font-weight: 500; }
+  .dash-rank-value { font-family: 'IBM Plex Mono', monospace; color: var(--accent-2); font-size: 13px; }
+  @media (max-width: 640px) { .dash-columns { grid-template-columns: 1fr; } }
+  .report-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+  .report-header span { font-family: 'Space Grotesk', sans-serif; font-size: 14px; font-weight: 600; color: var(--ink); }
+  .table-wrap { overflow-x: auto; }
+  .table-wrap.hidden { display: none; }
+  table.ledger { width: 100%; border-collapse: collapse; font-size: 13px; }
+  table.ledger th { text-align: left; font-size: 11px; color: var(--accent-2); font-weight: 600; letter-spacing: 0.03em; padding: 6px 8px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  table.ledger td { padding: 8px; border-bottom: 1px solid var(--border-soft); white-space: nowrap; font-family: 'IBM Plex Mono', monospace; color: var(--ink-soft); }
+  table.ledger td.loc-cell, table.ledger td.class-cell { font-family: 'Inter', sans-serif; white-space: nowrap; color: var(--ink); }
+  table.ledger tbody tr:last-child td { border-bottom: none; }
+  table.ledger tbody tr:hover td { background: #F3F5FA; }
+  .note-box { font-size: 12px; color: var(--ink-soft); margin-bottom: 16px; padding: 10px 14px; border-radius: 12px; border: 1px solid #DCE0FA; background: #EEF0FE; }
+  .settings-form { display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-end; margin-bottom: 18px; padding-bottom: 16px; border-bottom: 1px solid var(--border-soft); }
+  .settings-field { display: flex; flex-direction: column; gap: 4px; }
+  .settings-field label { font-size: 11px; color: var(--muted); }
+  .settings-field input, .settings-field select { font-family: 'IBM Plex Mono', monospace; font-size: 13px; padding: 7px 9px; border-radius: 8px; border: 1px solid var(--border); background: #fff; color: var(--ink); width: 90px; }
+  .settings-form button { font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 600; padding: 9px 16px; border-radius: 10px; border: none; background: var(--grad-primary); color: #fff; cursor: pointer; }
+  .summary-toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 10px; }
+  .summary-toolbar .month-nav { display: flex; align-items: center; gap: 8px; }
+  .summary-toolbar .month-nav span { font-family: 'Space Grotesk', sans-serif; font-size: 14px; font-weight: 600; }
+  .leave-info { font-size: 13px; color: var(--ink-soft); margin-bottom: 16px; padding: 10px 14px; border-radius: 12px; background: #fff; border: 1px solid var(--border); }
+  .leave-info strong { color: var(--accent-2); font-family: 'IBM Plex Mono', monospace; }
+  .alert-card { border: 1px solid var(--border); border-radius: 12px; background: #fff; padding: 12px 14px; margin-bottom: 8px; }
+  .alert-card .alert-title { font-size: 13px; font-weight: 600; color: var(--admin); }
+  .alert-card .alert-meta { font-size: 12px; color: var(--muted); margin-top: 3px; }
+  #exportCsvBtn { margin-bottom: 12px; display: inline-block; }
+  @media (max-width: 480px) {
+    .chip { padding: 12px 18px; font-size: 15px; min-height: 44px; }
+    .punch-btn { padding: 20px 0; font-size: 20px; min-height: 56px; }
+    .tab-btn { padding: 11px 16px; font-size: 13px; min-height: 40px; }
+    .link-btn { padding: 6px 0; display: inline-block; }
+    .inline-form button, .inline-form button.secondary { padding: 12px 18px; min-height: 44px; }
+    .nav-btn { padding: 8px 14px; min-height: 40px; }
+    .cal-cell { min-height: 40px; }
+    .location-field input, .inline-form input { padding: 13px 14px; }
+  }
+  @media (min-width: 900px) {
+    .settings-form { align-items: flex-end; }
+    .dash-grid { grid-template-columns: repeat(4, 1fr); }
+    table.ledger tbody tr { cursor: default; }
+    table.ledger tbody tr:hover td { background: #EEF1FA; }
+  }
+  @media (prefers-reduced-motion: reduce) { .punch-btn.stamped::after { animation: none; } .punch-btn { transition: none; } }
+  @media (max-width: 400px) {
+    .clock { font-size: 40px; } .card-top { padding: 26px 20px 24px; } .card-bottom { padding: 18px 20px 26px; }
+    .log-name { width: 60px; } .cal-cell { font-size: 11px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="desk">
+  <div class="card">
+    <div class="card-top">
+      <div class="top-row">
+        <div class="card-label" id="cardLabel">タイムカード</div>
+        <div class="admin-controls">
+          <button class="link-btn" id="pinChangeBtn" style="display:none;">PINを変更</button>
+          <button class="link-btn" id="adminToggleBtn">管理者モード</button>
+        </div>
+      </div>
+      <div class="date" id="dateLabel">-</div>
+
+      <div id="adminPeopleArea" class="hidden">
+        <div class="people-label">打刻する人を選択（管理者）</div>
+        <div class="people-row" id="peopleRow"></div>
+        <div class="inline-form hidden" id="addForm">
+          <input type="text" id="addName" placeholder="名前" maxlength="20">
+          <input type="text" id="addBirthdate" placeholder="生年月日 例:19960821" maxlength="8" inputmode="numeric">
+          <input type="date" id="addHireDate" title="入社日">
+          <input type="email" id="addGoogleEmail" placeholder="Googleアカウント（任意・Googleログイン用）">
+          <button id="addConfirm">登録</button>
+          <button class="secondary" id="addCancel" type="button">キャンセル</button>
+          <div class="field-note">名前・生年月日・入社日は必須です。Googleアカウントを登録すると、その人はGoogleログインも使えるようになります。</div>
+        </div>
+      </div>
+
+      <div id="loginGate" class="hidden">
+        <div id="googleSignInArea" class="hidden">
+          <div class="people-label">Googleアカウントでログイン</div>
+          <div id="googleSignInButton" style="margin-top:10px;"></div>
+          <div class="auth-divider">または</div>
+        </div>
+        <div class="people-label">打刻する人を選んでください</div>
+        <div class="people-row" id="loginRow"></div>
+        <div class="inline-form hidden" id="loginBirthdateForm">
+          <input type="text" id="loginBirthdateInput" placeholder="生年月日 例:19960821" maxlength="8" inputmode="numeric">
+          <button id="loginConfirmBtn">ログイン</button>
+          <button class="secondary" id="loginCancelBtn" type="button">キャンセル</button>
+        </div>
+      </div>
+
+      <div id="personalHeader" class="hidden">
+        <div class="personal-row">
+          <span id="personalGreeting"></span>
+          <button class="link-btn" id="logoutBtn">ログアウト（交代する）</button>
+        </div>
+      </div>
+
+      <div id="punchArea" class="hidden">
+        <div class="clock" id="clockLabel">--:--:--</div>
+        <div class="status-line" id="statusLine"></div>
+        <div class="notices-panel hidden" id="noticesPanel"></div>
+        <div class="location-field hidden" id="locationField">
+          <label for="locationInput">本日の勤務場所</label>
+          <input type="text" id="locationInput" list="locationSuggestions" placeholder="例：本社、在宅、〇〇現場" maxlength="30">
+          <datalist id="locationSuggestions"></datalist>
+        </div>
+        <button class="punch-btn" id="punchBtn" disabled>読み込み中…</button>
+        <div class="today-total" id="todayTotal"></div>
+
+        <div class="leave-panel hidden" id="leavePanel">
+          <div class="leave-balance" id="leaveBalanceText"></div>
+          <button class="link-btn" id="leaveRequestToggleBtn">有給を申請する</button>
+          <div class="inline-form hidden" id="leaveRequestForm">
+            <input type="date" id="leaveDateInput">
+            <select id="leaveDaysSelect"><option value="1">1日</option><option value="0.5">半日(0.5日)</option></select>
+            <input type="text" id="leaveReasonInput" placeholder="理由（任意）">
+            <button id="leaveSubmitBtn">申請する</button>
+            <button class="secondary" id="leaveCancelBtn" type="button">キャンセル</button>
+          </div>
+          <div class="leave-history" id="leaveHistoryList"></div>
+        </div>
+      </div>
+    </div>
+    <div class="perforation"></div>
+    <div class="card-bottom hidden" id="cardBottom">
+
+      <div class="tab-bar hidden" id="adminTabBar">
+        <button class="tab-btn active" data-tab="dashboard">ダッシュボード</button>
+        <button class="tab-btn" data-tab="history">打刻履歴</button>
+        <button class="tab-btn" data-tab="report">勤務表</button>
+        <button class="tab-btn" data-tab="summary">勤怠集計</button>
+        <button class="tab-btn" data-tab="leave">有給申請</button>
+        <button class="tab-btn" data-tab="notices">お知らせ</button>
+        <button class="tab-btn" data-tab="alerts">未打刻アラート</button>
+      </div>
+
+      <div class="dashboard-section hidden" id="dashboardSection">
+        <div class="dash-grid" id="dashGrid"></div>
+        <div class="dash-columns">
+          <div class="dash-col">
+            <div class="report-header"><span>今月の残業時間ランキング</span></div>
+            <div id="dashOvertimeList"></div>
+          </div>
+          <div class="dash-col">
+            <div class="report-header"><span>直近の打刻</span></div>
+            <div id="dashRecentList"></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="historyView">
+        <div class="calendar-section hidden" id="calendarSection">
+          <div class="cal-header"><button class="nav-btn" id="calPrev">‹</button><span id="calMonthLabel">-</span><button class="nav-btn" id="calNext">›</button></div>
+          <div class="cal-weekdays"><span>日</span><span>月</span><span>火</span><span>水</span><span>木</span><span>金</span><span>土</span></div>
+          <div class="cal-grid" id="calGrid"></div>
+          <div class="cal-detail" id="calDetail"></div>
+        </div>
+        <div class="log-header"><span id="logHeaderLabel">打刻履歴</span><button class="undo-btn hidden" id="undoBtn">直前の打刻を取り消す</button></div>
+        <div id="logList"></div>
+      </div>
+
+      <div class="report-section hidden" id="reportSection">
+        <div class="report-header"><span>従業員別 勤務表</span><select id="reportPersonSelect"></select></div>
+        <div class="table-wrap">
+          <table class="ledger">
+            <thead><tr><th>日付</th><th>出勤時刻</th><th>退勤時刻</th><th>休憩時間</th><th>勤務場所</th></tr></thead>
+            <tbody id="reportTbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="summary-section hidden" id="summarySection">
+        <div class="note-box">
+          所定労働時間・法定休日などの設定と、労基法の休憩時間規定（6時間超45分以上／8時間超60分以上）に基づく自動計算です。実際の給与計算・労務管理には社労士など専門家の確認を推奨します。
+        </div>
+        <div class="settings-form">
+          <div class="settings-field"><label for="scheduledHoursInput">所定労働時間(1日)</label><input type="number" id="scheduledHoursInput" step="0.5" min="0" max="24"></div>
+          <div class="settings-field"><label for="legalHolidaySelect">法定休日</label>
+            <select id="legalHolidaySelect"><option value="0">日</option><option value="1">月</option><option value="2">火</option><option value="3">水</option><option value="4">木</option><option value="5">金</option><option value="6">土</option></select>
+          </div>
+          <div class="settings-field"><label for="scheduledHolidaySelect">所定休日</label>
+            <select id="scheduledHolidaySelect"><option value="-1">なし</option><option value="0">日</option><option value="1">月</option><option value="2">火</option><option value="3">水</option><option value="4">木</option><option value="5">金</option><option value="6">土</option></select>
+          </div>
+          <button id="saveSettingsBtn">設定を保存</button>
+        </div>
+
+        <div class="note-box">
+          このアプリは <strong>https://tsurugisatoshi-sys.github.io</strong> で公開されています。Googleログインを使うには、Google Cloud ConsoleのOAuthクライアントID設定の「承認済みのJavaScript生成元」にこのドメイン（パスは付けず、この部分だけ）を登録し、発行されたクライアントIDを下記に貼り付けてください。<br>
+          スプレッドシート連携は、Google Apps Scriptで作成したウェブアプリのURLを貼り付けると、打刻のたびに自動送信されます（別途スクリプトの設置が必要です）。
+        </div>
+        <div class="settings-form">
+          <div class="settings-field" style="width:260px;"><label for="googleClientIdInput">Google Client ID</label><input type="text" id="googleClientIdInput" style="width:100%;" placeholder="xxxx.apps.googleusercontent.com"></div>
+          <div class="settings-field" style="width:260px;"><label for="sheetsWebhookInput">スプレッドシート連携URL</label><input type="text" id="sheetsWebhookInput" style="width:100%;" placeholder="Apps Script ウェブアプリURL"></div>
+          <button id="saveIntegrationsBtn">連携設定を保存</button>
+        </div>
+
+        <div class="summary-toolbar">
+          <select id="summaryPersonSelect"></select>
+          <div class="period-toggle" id="periodToggle">
+            <button class="tab-btn active" data-period="daily">日別</button>
+            <button class="tab-btn" data-period="weekly">週別</button>
+            <button class="tab-btn" data-period="monthly">月次</button>
+            <button class="tab-btn" data-period="yearly">年次</button>
+          </div>
+          <div class="month-nav" id="monthNavWrap"><button class="nav-btn" id="summaryPrev">‹</button><span id="summaryMonthLabel">-</span><button class="nav-btn" id="summaryNext">›</button></div>
+          <div class="month-nav hidden" id="yearNavWrap"><button class="nav-btn" id="summaryYearPrev">‹</button><span id="summaryYearLabel">-</span><button class="nav-btn" id="summaryYearNext">›</button></div>
+        </div>
+
+        <div class="leave-info" id="leaveInfo"></div>
+
+        <div class="table-wrap" id="dailyTableWrap">
+          <button class="link-btn" id="exportCsvBtn">CSVで出力（日別＋月合計・勤務場所つき）</button>
+          <table class="ledger">
+            <thead>
+              <tr>
+                <th>日付</th><th>勤務区分</th><th>所定勤務区分</th><th>出勤時刻</th><th>退勤時刻</th>
+                <th>総労働時間</th><th>休憩時間</th><th>残業時間</th><th>残業時間:36</th><th>実働時間</th>
+                <th>所定内労働</th><th>法定内時間外労働</th><th>法定時間外労働</th>
+                <th>法定外休日労働</th><th>法定休日労働</th><th>深夜労働</th><th>勤務場所</th>
+              </tr>
+            </thead>
+            <tbody id="summaryTbody"></tbody>
+          </table>
+        </div>
+        <div class="table-wrap hidden" id="aggregateTableWrap">
+          <table class="ledger">
+            <thead>
+              <tr>
+                <th>期間</th><th>出勤日数</th><th>欠勤日数</th><th>休日出勤日数</th>
+                <th>総労働時間</th><th>休憩時間</th><th>実働時間</th><th>残業時間</th><th>残業時間:36</th>
+                <th>所定内労働</th><th>法定内時間外労働</th><th>法定時間外労働</th>
+                <th>法定外休日労働</th><th>法定休日労働</th><th>深夜労働</th>
+              </tr>
+            </thead>
+            <tbody id="aggregateTbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="leave-admin-section hidden" id="leaveAdminSection">
+        <div class="report-header"><span>有給申請 一覧</span></div>
+        <div id="leaveAdminList"></div>
+      </div>
+
+      <div class="notices-admin-section hidden" id="noticesAdminSection">
+        <div class="note-box">従業員の一般画面に表示されるお知らせを送れます。対象を「全員」または特定の1人に絞れます。</div>
+        <div class="inline-form">
+          <select id="noticeTargetSelect"></select>
+          <input type="text" id="noticeTextInput" placeholder="メッセージを入力" maxlength="200" style="flex:1; min-width:200px;">
+          <button id="noticeSendBtn">送信</button>
+        </div>
+        <div id="noticeList" style="margin-top:14px;"></div>
+      </div>
+
+      <div class="alerts-section hidden" id="alertsSection">
+        <div class="note-box">
+          このアプリはブラウザ上で動くだけなので、決まった時刻に自動でメールを送り続けることはできません（サーバーや定期実行の仕組みがないため）。代わりに、未打刻が疑われる従業員本人の一般画面にエラーとして直接表示する仕組みにしています。ここは管理者が状況を一覧で確認するための一覧です。
+        </div>
+        <div id="alertsList"></div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+  const STORAGE_KEY = 'timeclock:data';
+  const DEFAULT_SETTINGS = { scheduledHours: 8, legalHolidayWeekday: 0, scheduledHolidayWeekday: 6, googleClientId: '904408265857-qr36497ob7aud3hv47s7f6qk4vhe62ed.apps.googleusercontent.com', sheetsWebhookUrl: 'https://script.google.com/macros/s/AKfycbzeELHzX8LEk0GAkUSEWbD-54wsB_GZum1qbsddzMNBoMBToizvAn7uOF6cksPDhXM1/exec' };
+
+  let people = [];
+  let records = [];
+  let editHistory = [];
+  let leaveRequests = [];
+  let adminMessages = [];
+  let adminPin = null;
+  let settings = { ...DEFAULT_SETTINGS };
+  let selected = null;
+  let loggedInName = null;
+  let pendingLoginName = null;
+  let isAdmin = false;
+  let loaded = false;
+  let activeTab = 'dashboard';
+  let periodView = 'daily';
+
+  let calendarMonth = new Date();
+  let selectedDay = null;
+  let reportPerson = null;
+  let summaryPerson = null;
+  let summaryMonth = new Date();
+  let summaryYear = new Date().getFullYear();
+
+  const cardLabel = document.getElementById('cardLabel');
+  const adminToggleBtn = document.getElementById('adminToggleBtn');
+  const pinChangeBtn = document.getElementById('pinChangeBtn');
+  const dateLabel = document.getElementById('dateLabel');
+  const adminPeopleArea = document.getElementById('adminPeopleArea');
+  const peopleRow = document.getElementById('peopleRow');
+  const addForm = document.getElementById('addForm');
+  const addName = document.getElementById('addName');
+  const addBirthdate = document.getElementById('addBirthdate');
+  const addHireDate = document.getElementById('addHireDate');
+  const addGoogleEmail = document.getElementById('addGoogleEmail');
+  const addConfirm = document.getElementById('addConfirm');
+  const addCancel = document.getElementById('addCancel');
+  const loginGate = document.getElementById('loginGate');
+  const loginRow = document.getElementById('loginRow');
+  const loginBirthdateForm = document.getElementById('loginBirthdateForm');
+  const loginBirthdateInput = document.getElementById('loginBirthdateInput');
+  const loginConfirmBtn = document.getElementById('loginConfirmBtn');
+  const loginCancelBtn = document.getElementById('loginCancelBtn');
+  const personalHeader = document.getElementById('personalHeader');
+  const personalGreeting = document.getElementById('personalGreeting');
+  const logoutBtn = document.getElementById('logoutBtn');
+  const punchArea = document.getElementById('punchArea');
+  const clockLabel = document.getElementById('clockLabel');
+  const statusLine = document.getElementById('statusLine');
+  const locationField = document.getElementById('locationField');
+  const locationInput = document.getElementById('locationInput');
+  const locationSuggestionsEl = document.getElementById('locationSuggestions');
+  const punchBtn = document.getElementById('punchBtn');
+  const todayTotal = document.getElementById('todayTotal');
+  const leavePanel = document.getElementById('leavePanel');
+  const leaveBalanceText = document.getElementById('leaveBalanceText');
+  const leaveRequestToggleBtn = document.getElementById('leaveRequestToggleBtn');
+  const leaveRequestForm = document.getElementById('leaveRequestForm');
+  const leaveDateInput = document.getElementById('leaveDateInput');
+  const leaveDaysSelect = document.getElementById('leaveDaysSelect');
+  const leaveReasonInput = document.getElementById('leaveReasonInput');
+  const leaveSubmitBtn = document.getElementById('leaveSubmitBtn');
+  const leaveCancelBtn = document.getElementById('leaveCancelBtn');
+  const leaveHistoryList = document.getElementById('leaveHistoryList');
+
+  const cardBottom = document.getElementById('cardBottom');
+  const adminTabBar = document.getElementById('adminTabBar');
+  const historyView = document.getElementById('historyView');
+  const dashboardSection = document.getElementById('dashboardSection');
+  const dashGrid = document.getElementById('dashGrid');
+  const dashOvertimeList = document.getElementById('dashOvertimeList');
+  const dashRecentList = document.getElementById('dashRecentList');
+  const logHeaderLabel = document.getElementById('logHeaderLabel');
+  const undoBtn = document.getElementById('undoBtn');
+  const logList = document.getElementById('logList');
+  const calendarSection = document.getElementById('calendarSection');
+  const calMonthLabel = document.getElementById('calMonthLabel');
+  const calGrid = document.getElementById('calGrid');
+  const calDetail = document.getElementById('calDetail');
+  const calPrev = document.getElementById('calPrev');
+  const calNext = document.getElementById('calNext');
+  const reportSection = document.getElementById('reportSection');
+  const reportPersonSelect = document.getElementById('reportPersonSelect');
+  const reportTbody = document.getElementById('reportTbody');
+
+  const summarySection = document.getElementById('summarySection');
+  const scheduledHoursInput = document.getElementById('scheduledHoursInput');
+  const legalHolidaySelect = document.getElementById('legalHolidaySelect');
+  const scheduledHolidaySelect = document.getElementById('scheduledHolidaySelect');
+  const saveSettingsBtn = document.getElementById('saveSettingsBtn');
+  const googleClientIdInput = document.getElementById('googleClientIdInput');
+  const sheetsWebhookInput = document.getElementById('sheetsWebhookInput');
+  const saveIntegrationsBtn = document.getElementById('saveIntegrationsBtn');
+  const googleSignInArea = document.getElementById('googleSignInArea');
+  const googleSignInButton = document.getElementById('googleSignInButton');
+  const summaryPersonSelect = document.getElementById('summaryPersonSelect');
+  const periodToggle = document.getElementById('periodToggle');
+  const monthNavWrap = document.getElementById('monthNavWrap');
+  const yearNavWrap = document.getElementById('yearNavWrap');
+  const summaryMonthLabel = document.getElementById('summaryMonthLabel');
+  const summaryYearLabel = document.getElementById('summaryYearLabel');
+  const summaryPrev = document.getElementById('summaryPrev');
+  const summaryNext = document.getElementById('summaryNext');
+  const summaryYearPrev = document.getElementById('summaryYearPrev');
+  const summaryYearNext = document.getElementById('summaryYearNext');
+  const dailyTableWrap = document.getElementById('dailyTableWrap');
+  const aggregateTableWrap = document.getElementById('aggregateTableWrap');
+  const summaryTbody = document.getElementById('summaryTbody');
+  const aggregateTbody = document.getElementById('aggregateTbody');
+  const leaveInfo = document.getElementById('leaveInfo');
+  const exportCsvBtn = document.getElementById('exportCsvBtn');
+
+  const leaveAdminSection = document.getElementById('leaveAdminSection');
+  const leaveAdminList = document.getElementById('leaveAdminList');
+  const alertsSection = document.getElementById('alertsSection');
+  const alertsList = document.getElementById('alertsList');
+  const noticesPanel = document.getElementById('noticesPanel');
+  const noticesAdminSection = document.getElementById('noticesAdminSection');
+  const noticeTargetSelect = document.getElementById('noticeTargetSelect');
+  const noticeTextInput = document.getElementById('noticeTextInput');
+  const noticeSendBtn = document.getElementById('noticeSendBtn');
+  const noticeList = document.getElementById('noticeList');
+
+  function pad(n) { return String(n).padStart(2, '0'); }
+  function formatClock(d) { return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`; }
+  function formatDateHeader(d) { return d.toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' }); }
+  function formatDateShort(d) { return d.toLocaleDateString('ja-JP', { year: 'numeric', month: 'numeric', day: 'numeric' }); }
+  function formatDuration(ms) { const t = Math.round(ms / 60000), h = Math.floor(t / 60), m = t % 60; return h <= 0 ? `${m}分` : `${h}時間${m}分`; }
+  function formatHM(ms) { if (!ms || ms <= 0) return '00:00'; const t = Math.round(ms / 60000); return `${pad(Math.floor(t / 60))}:${pad(t % 60)}`; }
+  function dateKey(d) { return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; }
+  function uid() { return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`; }
+  function escapeHtml(str) { return String(str).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+  function activeName() { return isAdmin ? selected : loggedInName; }
+  function personByName(name) { return people.find(p => p.name === name); }
+
+  function getGeoLocation() {
+    return new Promise(resolve => {
+      if (!navigator.geolocation) { resolve({ error: 'unsupported' }); return; }
+      const timer = setTimeout(() => resolve({ error: 'timeout' }), 6000);
+      navigator.geolocation.getCurrentPosition(
+        pos => { clearTimeout(timer); resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy: pos.coords.accuracy }); },
+        err => { clearTimeout(timer); resolve({ error: err.code === 1 ? 'denied' : 'failed' }); },
+        { timeout: 5000, maximumAge: 0 }
+      );
+    });
+  }
+
+  async function reverseGeocodeAddress(lat, lng) {
+    try {
+      const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}&accept-language=ja&zoom=17`;
+      const res = await fetch(url);
+      if (!res.ok) return null;
+      const data = await res.json();
+      const a = data.address || {};
+      const parts = [];
+      if (a.state) parts.push(a.state);
+      if (a.city) parts.push(a.city);
+      else if (a.town) parts.push(a.town);
+      else if (a.county) parts.push(a.county);
+      if (a.city_district) parts.push(a.city_district);
+      else if (a.suburb) parts.push(a.suburb);
+      if (a.neighbourhood) parts.push(a.neighbourhood);
+      else if (a.quarter) parts.push(a.quarter);
+      return parts.length ? parts.join('') : null;
+    } catch (e) { return null; }
+  }
+
+  async function loadData() {
+    try {
+      const result = await window.storage.get(STORAGE_KEY, true);
+      if (result && result.value) {
+        const parsed = JSON.parse(result.value);
+        return {
+          people: (parsed.people || []).map(p => typeof p === 'string' ? { name: p, birthdate: '', hireDate: '', googleEmail: '' } : { name: p.name, birthdate: p.birthdate || '', hireDate: p.hireDate || '', googleEmail: p.googleEmail || '' }),
+          records: parsed.records || [],
+          editHistory: parsed.editHistory || [],
+          leaveRequests: parsed.leaveRequests || [],
+          adminMessages: parsed.adminMessages || [],
+          adminPin: parsed.adminPin || null,
+          settings: parsed.settings ? { ...DEFAULT_SETTINGS, ...parsed.settings } : { ...DEFAULT_SETTINGS }
+        };
+      }
+    } catch (e) { /* no existing data */ }
+    return { people: [], records: [], editHistory: [], leaveRequests: [], adminMessages: [], adminPin: null, settings: { ...DEFAULT_SETTINGS } };
+  }
+  async function saveData() {
+    try {
+      const ok = await window.storage.set(STORAGE_KEY, JSON.stringify({ people, records, editHistory, leaveRequests, adminMessages, adminPin, settings }), true);
+      if (!ok) console.error('保存に失敗しました');
+    } catch (e) { console.error('保存エラー', e); }
+  }
+
+  function statusFor(name) { for (let i = records.length - 1; i >= 0; i--) if (records[i].name === name) return records[i].type; return 'out'; }
+  function lastRecordFor(name) { for (let i = records.length - 1; i >= 0; i--) if (records[i].name === name) return records[i]; return null; }
+  function recordsForDay(key) { return records.filter(r => dateKey(new Date(r.timestamp)) === key); }
+  function locationSuggestions() {
+    const seen = new Set(); const list = [];
+    for (let i = records.length - 1; i >= 0; i--) { const loc = records[i].location; if (loc && !seen.has(loc)) { seen.add(loc); list.push(loc); } if (list.length >= 8) break; }
+    return list;
+  }
+
+  async function toggleAdmin() {
+    if (isAdmin) { isAdmin = false; renderAll(); return; }
+    if (!adminPin) {
+      const newPin = prompt('管理者用のPINを新しく設定してください（4桁以上）');
+      if (newPin === null || newPin.trim() === '') return;
+      adminPin = newPin.trim(); isAdmin = true; renderAll(); await saveData();
+      alert('管理者PINを設定しました。次回からはこのPINで管理者モードに入れます。'); return;
+    }
+    const input = prompt('管理者PINを入力してください');
+    if (input === null) return;
+    if (input === adminPin) { isAdmin = true; renderAll(); } else alert('PINが正しくありません。');
+  }
+  async function changePin() {
+    const current = prompt('現在の管理者PINを入力してください');
+    if (current === null) return;
+    if (current !== adminPin) { alert('PINが正しくありません。'); return; }
+    const next = prompt('新しいPINを入力してください');
+    if (next === null || next.trim() === '') return;
+    adminPin = next.trim(); await saveData(); alert('管理者PINを変更しました。');
+  }
+  adminToggleBtn.addEventListener('click', toggleAdmin);
+  pinChangeBtn.addEventListener('click', changePin);
+  logoutBtn.addEventListener('click', () => { loggedInName = null; renderAll(); });
+  adminTabBar.addEventListener('click', e => { const b = e.target.closest('.tab-btn'); if (!b) return; activeTab = b.dataset.tab; renderAll(); });
+  periodToggle.addEventListener('click', e => { const b = e.target.closest('button[data-period]'); if (!b) return; periodView = b.dataset.period; renderSummaryTable(); });
+  summaryYearPrev.addEventListener('click', () => { summaryYear--; renderSummaryTable(); });
+  summaryYearNext.addEventListener('click', () => { summaryYear++; renderSummaryTable(); });
+
+  function renderAdminPeople() {
+    peopleRow.innerHTML = '';
+    for (const p of people) {
+      const chip = document.createElement('button');
+      chip.className = 'chip' + (p.name === selected ? ' selected' : '');
+      chip.innerHTML = `<span>${escapeHtml(p.name)}</span><span class="remove" title="削除">×</span>`;
+      chip.querySelector('span:first-child').addEventListener('click', e => { e.stopPropagation(); selected = p.name; renderAll(); });
+      chip.querySelector('.remove').addEventListener('click', async e => {
+        e.stopPropagation(); people = people.filter(x => x.name !== p.name);
+        if (selected === p.name) selected = people[0] ? people[0].name : null;
+        renderAll(); await saveData();
+      });
+      peopleRow.appendChild(chip);
+    }
+    const addChip = document.createElement('button');
+    addChip.className = 'chip add-chip'; addChip.textContent = '+ 追加';
+    addChip.addEventListener('click', () => { addForm.classList.remove('hidden'); addName.value=''; addBirthdate.value=''; addHireDate.value=''; addGoogleEmail.value=''; addName.focus(); });
+    peopleRow.appendChild(addChip);
+  }
+
+  async function confirmAddPerson() {
+    const name = addName.value.trim(), birthdate = addBirthdate.value.trim(), hireDate = addHireDate.value, googleEmail = addGoogleEmail.value.trim();
+    if (!name || !birthdate || !hireDate) { alert('名前・生年月日・入社日はすべて必須です。'); return; }
+    if (!/^[0-9]{8}$/.test(birthdate)) { alert('生年月日は8桁の数字で入力してください（例:19960821）。'); return; }
+    const y = +birthdate.slice(0,4), mo = +birthdate.slice(4,6), da = +birthdate.slice(6,8);
+    const bd = new Date(y, mo-1, da);
+    if (bd.getFullYear()!==y || bd.getMonth()!==mo-1 || bd.getDate()!==da) { alert('生年月日が正しい日付ではありません。'); return; }
+    if (people.some(p => p.name === name)) { alert('同じ名前がすでに登録されています。'); return; }
+    people.push({ name, birthdate, hireDate, googleEmail });
+    selected = name; addForm.classList.add('hidden');
+    renderAll(); await saveData();
+  }
+  addConfirm.addEventListener('click', confirmAddPerson);
+  addCancel.addEventListener('click', () => addForm.classList.add('hidden'));
+
+  function renderLoginRow() {
+    loginRow.innerHTML = '';
+    if (people.length === 0) { loginRow.innerHTML = '<div class="empty-state">登録された人がいません。管理者モードで追加してください。</div>'; return; }
+    for (const p of people) {
+      const chip = document.createElement('button');
+      chip.className = 'chip'; chip.textContent = p.name;
+      chip.addEventListener('click', () => { pendingLoginName = p.name; loginBirthdateForm.classList.remove('hidden'); loginBirthdateInput.value=''; loginBirthdateInput.focus(); });
+      loginRow.appendChild(chip);
+    }
+  }
+  function attemptLogin() {
+    if (!pendingLoginName) return;
+    const value = loginBirthdateInput.value.trim();
+    if (!/^[0-9]{8}$/.test(value)) { alert('生年月日は8桁の数字で入力してください（例:19960821）。'); return; }
+    const person = personByName(pendingLoginName);
+    if (person && person.birthdate === value) { loggedInName = pendingLoginName; pendingLoginName = null; loginBirthdateForm.classList.add('hidden'); renderAll(); }
+    else alert('生年月日が正しくありません。');
+  }
+  loginConfirmBtn.addEventListener('click', attemptLogin);
+  loginBirthdateInput.addEventListener('keydown', e => { if (e.key === 'Enter') attemptLogin(); });
+  loginCancelBtn.addEventListener('click', () => { pendingLoginName = null; loginBirthdateForm.classList.add('hidden'); });
+
+  function tickClock() {
+    const now = new Date();
+    clockLabel.textContent = formatClock(now);
+    dateLabel.textContent = formatDateHeader(now);
+    updateTodayTotal(now);
+  }
+  function updateTodayTotal(now) {
+    const name = activeName();
+    if (!name) { todayTotal.textContent = ''; return; }
+    const key = dateKey(now); let totalMs = 0, openStart = null;
+    for (const r of records) {
+      if (r.name !== name) continue;
+      const t = new Date(r.timestamp); if (dateKey(t) !== key) continue;
+      if (r.type === 'in') openStart = t; else if (r.type === 'out' && openStart) { totalMs += t - openStart; openStart = null; }
+    }
+    if (openStart) totalMs += now - openStart;
+    todayTotal.innerHTML = totalMs > 0 ? `${escapeHtml(name)}さんの本日の合計 <strong>${formatDuration(totalMs)}</strong>` : '';
+  }
+  function populateLocationSuggestions() { locationSuggestionsEl.innerHTML = locationSuggestions().map(loc => `<option value="${escapeHtml(loc)}">`).join(''); }
+
+  function renderButton() {
+    const name = activeName();
+    if (!name) {
+      punchBtn.disabled = true; punchBtn.textContent = '打刻する人を選択してください';
+      punchBtn.classList.remove('out-mode'); statusLine.textContent = ''; locationField.classList.add('hidden');
+      return;
+    }
+    punchBtn.disabled = !loaded;
+    const status = statusFor(name);
+    if (status === 'out') {
+      punchBtn.textContent = `${name}さん：出勤する`; punchBtn.classList.remove('out-mode');
+      statusLine.textContent = `${name}さんは現在、退勤中です`;
+      locationField.classList.remove('hidden'); populateLocationSuggestions();
+    } else {
+      punchBtn.textContent = `${name}さん：退勤する`; punchBtn.classList.add('out-mode');
+      const last = lastRecordFor(name); const since = new Date(last.timestamp);
+      const locText = last.location ? `［${last.location}］` : '';
+      statusLine.textContent = `${name}さんは ${pad(since.getHours())}:${pad(since.getMinutes())} から${locText}出勤中です`;
+      locationField.classList.add('hidden');
+    }
+  }
+
+  function computeDurationMap(list) {
+    const durationById = {}; const byPerson = {};
+    for (const r of list) (byPerson[r.name] = byPerson[r.name] || []).push(r);
+    for (const name in byPerson) {
+      const seq = byPerson[name].slice().sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+      let openStart = null;
+      for (const r of seq) {
+        if (r.type === 'in') openStart = new Date(r.timestamp);
+        else if (r.type === 'out' && openStart) { durationById[r.id] = formatDuration(new Date(r.timestamp) - openStart); openStart = null; }
+      }
+    }
+    return durationById;
+  }
+  function editHistoryForRecord(id) { return editHistory.filter(e => e.recordId === id).sort((a,b) => new Date(a.editedAt) - new Date(b.editedAt)); }
+
+  function renderEntryHtml(record, time, durationText, editable) {
+    const nameHtml = editable ? `<span class="log-name">${escapeHtml(record.name)}</span>` : '';
+    const locHtml = (record.type === 'in' && record.location) ? `<div class="log-location">📍 ${escapeHtml(record.location)}</div>` : '';
+    const geoHtml = record.geo
+      ? `<div class="log-location">🛰️ ${record.geo.address ? escapeHtml(record.geo.address) : '住所を取得できませんでした'} <a href="https://www.google.com/maps?q=${record.geo.lat},${record.geo.lng}" target="_blank" rel="noopener">(地図)</a></div>`
+      : '';
+    const hist = editable ? editHistoryForRecord(record.id) : [];
+    const actionsHtml = editable
+      ? `<div class="log-actions">
+           <button class="link-btn edit-record-btn" data-id="${record.id}">編集</button>
+           ${hist.length ? `<button class="link-btn history-toggle-btn" data-id="${record.id}">編集履歴(${hist.length})</button>` : ''}
+         </div>
+         <div class="log-edit-history hidden" data-id="${record.id}"></div>`
+      : '';
+    return `<div class="log-entry" data-record-id="${record.id}">
+        <div class="log-row">
+          <span class="log-time">${pad(time.getHours())}:${pad(time.getMinutes())}</span>
+          ${nameHtml}
+          <span class="log-type ${record.type}">${record.type === 'in' ? '出勤' : '退勤'}</span>
+          <span class="log-duration">${durationText}</span>
+        </div>${locHtml}${geoHtml}${actionsHtml}
+      </div>`;
+  }
+  function attachEntryHandlers(container) {
+    container.querySelectorAll('.edit-record-btn').forEach(b => b.addEventListener('click', () => handleEditRecord(b.dataset.id)));
+    container.querySelectorAll('.history-toggle-btn').forEach(b => b.addEventListener('click', () => handleToggleHistory(b.dataset.id)));
+  }
+  async function handleEditRecord(id) {
+    const record = records.find(r => r.id === id);
+    if (!record) return;
+    const t = new Date(record.timestamp);
+    const currentHHMM = `${pad(t.getHours())}:${pad(t.getMinutes())}`;
+    const timeStr = prompt(`${record.name}さんの${record.type === 'in' ? '出勤' : '退勤'}時刻を編集 (HH:MM)`, currentHHMM);
+    if (timeStr === null) return;
+    if (!/^([01]\d|2[0-3]):([0-5]\d)$/.test(timeStr.trim())) { alert('時刻はHH:MM形式で入力してください。'); return; }
+    const [hh, mm] = timeStr.trim().split(':').map(Number);
+    const newDate = new Date(t.getFullYear(), t.getMonth(), t.getDate(), hh, mm, t.getSeconds());
+    let newLocation = record.location;
+    if (record.type === 'in') {
+      const locStr = prompt('勤務場所を編集', record.location || '');
+      if (locStr === null) return;
+      newLocation = locStr.trim();
+    }
+    const before = { timestamp: record.timestamp, location: record.location };
+    record.timestamp = newDate.toISOString();
+    if (record.type === 'in') record.location = newLocation;
+    const after = { timestamp: record.timestamp, location: record.location };
+    editHistory.push({ id: uid(), recordId: record.id, editedAt: new Date().toISOString(), before, after });
+    renderAll(); await saveData();
+  }
+  function handleToggleHistory(id) {
+    const panel = document.querySelector(`.log-edit-history[data-id="${id}"]`);
+    if (!panel) return;
+    if (panel.classList.contains('hidden')) {
+      const entries = editHistoryForRecord(id);
+      panel.innerHTML = entries.map(e => {
+        const bt = new Date(e.before.timestamp), at = new Date(e.after.timestamp);
+        return `<div class="edit-history-line">${new Date(e.editedAt).toLocaleString('ja-JP')}：
+          ${pad(bt.getHours())}:${pad(bt.getMinutes())}${e.before.location ? `［${escapeHtml(e.before.location)}］` : ''}
+          → ${pad(at.getHours())}:${pad(at.getMinutes())}${e.after.location ? `［${escapeHtml(e.after.location)}］` : ''}</div>`;
+      }).join('') || '<div class="empty-state">編集履歴はありません。</div>';
+      panel.classList.remove('hidden');
+    } else panel.classList.add('hidden');
+  }
+
+  function buildGroupedLogHtml(list, editable) {
+    if (list.length === 0) return '<div class="empty-state">打刻すると、ここに履歴が表示されます。</div>';
+    const durationById = computeDurationMap(list);
+    const sorted = list.slice().sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+    const groups = []; let currentGroup = null;
+    for (const r of sorted) {
+      const t = new Date(r.timestamp); const key = dateKey(t);
+      if (!currentGroup || currentGroup.key !== key) { currentGroup = { key, date: t, rows: [] }; groups.push(currentGroup); }
+      currentGroup.rows.push({ record: r, time: t });
+    }
+    let html = '';
+    for (const g of groups) {
+      html += `<div class="log-group-date">${formatDateHeader(g.date)}</div>`;
+      const chrono = [...g.rows].reverse();
+      for (const { record, time } of chrono) {
+        const durationText = record.type === 'out' ? (durationById[record.id] || '') : '';
+        html += renderEntryHtml(record, time, durationText, editable);
+      }
+    }
+    return html;
+  }
+  function renderLog() {
+    if (isAdmin) {
+      logHeaderLabel.textContent = '打刻履歴（全員）';
+      undoBtn.classList.toggle('hidden', records.length === 0);
+      logList.innerHTML = buildGroupedLogHtml(records, true);
+      attachEntryHandlers(logList);
+    } else if (loggedInName) {
+      logHeaderLabel.textContent = 'あなたの打刻履歴';
+      undoBtn.classList.add('hidden');
+      logList.innerHTML = buildGroupedLogHtml(records.filter(r => r.name === loggedInName), false);
+    } else logList.innerHTML = '';
+  }
+
+  function renderCalendar() {
+    if (!isAdmin) { calendarSection.classList.add('hidden'); return; }
+    calendarSection.classList.remove('hidden');
+    const year = calendarMonth.getFullYear(), month = calendarMonth.getMonth();
+    calMonthLabel.textContent = `${year}年${month + 1}月`;
+    const firstWeekday = new Date(year, month, 1).getDay();
+    const totalDays = new Date(year, month + 1, 0).getDate();
+    const todayStr = dateKey(new Date());
+    let html = '';
+    for (let i = 0; i < firstWeekday; i++) html += '<div class="cal-cell empty"></div>';
+    for (let day = 1; day <= totalDays; day++) {
+      const dStr = `${year}-${pad(month + 1)}-${pad(day)}`;
+      const count = recordsForDay(dStr).length;
+      const classes = ['cal-cell'];
+      if (count > 0) classes.push('has-records');
+      if (dStr === todayStr) classes.push('today');
+      if (dStr === selectedDay) classes.push('selected');
+      html += `<div class="${classes.join(' ')}" data-date="${dStr}"><span>${day}</span>${count > 0 ? `<span class="cal-badge">${count}</span>` : ''}</div>`;
+    }
+    calGrid.innerHTML = html;
+    calGrid.querySelectorAll('.cal-cell[data-date]').forEach(cell => cell.addEventListener('click', () => { selectedDay = cell.dataset.date; renderCalendar(); }));
+    renderDayDetail();
+  }
+  function renderDayDetail() {
+    if (!selectedDay) { calDetail.innerHTML = ''; return; }
+    const dayRecords = recordsForDay(selectedDay).slice().sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+    const d = new Date(selectedDay + 'T00:00:00');
+    let html = `<div class="cal-detail-title">${formatDateHeader(d)}</div>`;
+    if (dayRecords.length === 0) html += `<div class="cal-empty">この日の打刻はありません。</div>`;
+    else {
+      const durationById = computeDurationMap(dayRecords);
+      for (const r of dayRecords) {
+        const t = new Date(r.timestamp);
+        const durationText = r.type === 'out' ? (durationById[r.id] || '') : '';
+        html += renderEntryHtml(r, t, durationText, true);
+      }
+    }
+    calDetail.innerHTML = html;
+    attachEntryHandlers(calDetail);
+  }
+  calPrev.addEventListener('click', () => { calendarMonth = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() - 1, 1); selectedDay = null; renderCalendar(); });
+  calNext.addEventListener('click', () => { calendarMonth = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + 1, 1); selectedDay = null; renderCalendar(); });
+
+  reportPersonSelect.addEventListener('change', () => { reportPerson = reportPersonSelect.value; renderReportTable(); });
+  function renderReportTable() {
+    if (!isAdmin) return;
+    const prev = reportPerson;
+    reportPersonSelect.innerHTML = people.map(p => `<option value="${escapeHtml(p.name)}">${escapeHtml(p.name)}</option>`).join('');
+    if (people.length === 0) { reportPerson = null; reportTbody.innerHTML = `<tr><td colspan="5" class="empty-state">従業員が登録されていません。</td></tr>`; return; }
+    reportPerson = (prev && people.some(p => p.name === prev)) ? prev : people[0].name;
+    reportPersonSelect.value = reportPerson;
+    const mine = records.filter(r => r.name === reportPerson);
+    if (mine.length === 0) { reportTbody.innerHTML = `<tr><td colspan="5" class="empty-state">打刻記録がありません。</td></tr>`; return; }
+    const byDate = {};
+    for (const r of mine) { const key = dateKey(new Date(r.timestamp)); (byDate[key] = byDate[key] || []).push(r); }
+    const dateKeys = Object.keys(byDate).sort((a, b) => (a < b ? 1 : -1));
+    let html = '';
+    for (const key of dateKeys) {
+      const seq = byDate[key].slice().sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+      const firstIn = seq.find(r => r.type === 'in');
+      const lastRec = seq[seq.length - 1];
+      const clockInText = firstIn ? `${pad(new Date(firstIn.timestamp).getHours())}:${pad(new Date(firstIn.timestamp).getMinutes())}` : '-';
+      const clockOutText = lastRec.type === 'out' ? `${pad(new Date(lastRec.timestamp).getHours())}:${pad(new Date(lastRec.timestamp).getMinutes())}` : '勤務中';
+      let breakMs = 0;
+      for (let i = 0; i < seq.length - 1; i++) if (seq[i].type === 'out' && seq[i + 1].type === 'in') breakMs += new Date(seq[i + 1].timestamp) - new Date(seq[i].timestamp);
+      const breakText = breakMs > 0 ? formatDuration(breakMs) : '-';
+      const location = (firstIn && firstIn.location) ? firstIn.location : '-';
+      const d = new Date(key + 'T00:00:00');
+      const dateCell = d.toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric', weekday: 'short' });
+      html += `<tr><td>${dateCell}</td><td>${clockInText}</td><td>${clockOutText}</td><td>${breakText}</td><td class="loc-cell">${escapeHtml(location)}</td></tr>`;
+    }
+    reportTbody.innerHTML = html;
+  }
+
+  function computeNightMs(seq, dateStr) {
+    const dayStart = new Date(dateStr + 'T00:00:00');
+    const night1Start = dayStart, night1End = new Date(dayStart.getTime() + 5 * 3600000);
+    const night2Start = new Date(dayStart.getTime() + 22 * 3600000), night2End = new Date(dayStart.getTime() + 24 * 3600000);
+    let segments = [], openStart = null;
+    for (const r of seq) {
+      const t = new Date(r.timestamp);
+      if (r.type === 'in') openStart = t;
+      else if (r.type === 'out' && openStart) { segments.push([openStart, t]); openStart = null; }
+    }
+    if (openStart) { const now = new Date(); if (dateStr === dateKey(now)) segments.push([openStart, now]); }
+    function overlap(aS, aE, bS, bE) { return Math.max(0, Math.min(aE.getTime(), bE.getTime()) - Math.max(aS.getTime(), bS.getTime())); }
+    let nightMs = 0;
+    for (const [s, e] of segments) { nightMs += overlap(s, e, night1Start, night1End); nightMs += overlap(s, e, night2Start, night2End); }
+    return nightMs;
+  }
+  function computeDaySummary(dateStr, dayRecords) {
+    const seq = dayRecords.slice().sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+    const weekday = new Date(dateStr + 'T00:00:00').getDay();
+    let scheduledType;
+    if (settings.legalHolidayWeekday === weekday) scheduledType = '法定休日';
+    else if (settings.scheduledHolidayWeekday === weekday) scheduledType = '所定休日';
+    else scheduledType = '平日';
+    const firstIn = seq.find(r => r.type === 'in');
+    const lastRec = seq.length ? seq[seq.length - 1] : null;
+    const hasPunches = seq.length > 0;
+    const clockInTime = firstIn ? new Date(firstIn.timestamp) : null;
+    const clockOutTime = (lastRec && lastRec.type === 'out') ? new Date(lastRec.timestamp) : null;
+    const stillOpen = hasPunches && lastRec.type === 'in';
+    let actualBreakMs = 0;
+    for (let i = 0; i < seq.length - 1; i++) if (seq[i].type === 'out' && seq[i + 1].type === 'in') actualBreakMs += new Date(seq[i + 1].timestamp) - new Date(seq[i].timestamp);
+    let totalMs = 0;
+    if (clockInTime && clockOutTime) totalMs = clockOutTime - clockInTime;
+    else if (clockInTime && stillOpen && dateStr === dateKey(new Date())) totalMs = new Date() - clockInTime;
+    const legalBreakMs = totalMs >= 8*3600000 ? 60*60000 : totalMs >= 6*3600000 ? 45*60000 : 0;
+    const breakMs = Math.max(actualBreakMs, legalBreakMs);
+    const workMs = totalMs > 0 ? totalMs - breakMs : 0;
+    const scheduledMs = settings.scheduledHours * 3600000, legalMs = 8*3600000;
+    let workClass, within=0, legalWithinOT=0, legalOverOT=0, otTotal=0, otu36=0, holidayNonLegal=0, holidayLegal=0;
+    if (!hasPunches) workClass = scheduledType === '平日' ? '欠勤' : scheduledType;
+    else if (scheduledType === '平日') {
+      workClass = '出勤';
+      within = Math.min(workMs, scheduledMs);
+      legalWithinOT = Math.max(0, Math.min(workMs, legalMs) - scheduledMs);
+      legalOverOT = Math.max(0, workMs - legalMs);
+      otTotal = legalWithinOT + legalOverOT; otu36 = legalOverOT;
+    } else {
+      workClass = '休日出勤';
+      if (scheduledType === '所定休日') holidayNonLegal = workMs; else holidayLegal = workMs;
+    }
+    const nightMs = hasPunches ? computeNightMs(seq, dateStr) : 0;
+    const location = firstIn && firstIn.location ? firstIn.location : null;
+    return { scheduledType, workClass, clockInTime, clockOutTime, stillOpen, totalMs, breakMs, workMs, within, legalWithinOT, legalOverOT, otTotal, otu36, holidayNonLegal, holidayLegal, nightMs, location };
+  }
+  function recordsForPersonDay(name, dStr) { return records.filter(r => r.name === name && dateKey(new Date(r.timestamp)) === dStr); }
+
+  function populateSettingsForm() {
+    scheduledHoursInput.value = settings.scheduledHours;
+    legalHolidaySelect.value = String(settings.legalHolidayWeekday);
+    scheduledHolidaySelect.value = String(settings.scheduledHolidayWeekday);
+    googleClientIdInput.value = settings.googleClientId || '';
+    sheetsWebhookInput.value = settings.sheetsWebhookUrl || '';
+  }
+  saveSettingsBtn.addEventListener('click', async () => {
+    const h = parseFloat(scheduledHoursInput.value);
+    settings.scheduledHours = isNaN(h) ? DEFAULT_SETTINGS.scheduledHours : h;
+    settings.legalHolidayWeekday = parseInt(legalHolidaySelect.value, 10);
+    settings.scheduledHolidayWeekday = parseInt(scheduledHolidaySelect.value, 10);
+    await saveData(); renderSummaryTable(); alert('設定を保存しました。');
+  });
+
+  saveIntegrationsBtn.addEventListener('click', async () => {
+    const prevClientId = settings.googleClientId;
+    settings.googleClientId = googleClientIdInput.value.trim();
+    settings.sheetsWebhookUrl = sheetsWebhookInput.value.trim();
+    await saveData();
+    if (settings.googleClientId !== prevClientId) initGoogleSignIn();
+    alert('連携設定を保存しました。');
+  });
+
+  let googleInitAttempted = false;
+  function loadGoogleScript() {
+    return new Promise((resolve, reject) => {
+      if (window.google && window.google.accounts && window.google.accounts.id) { resolve(); return; }
+      const existing = document.getElementById('gsiScript');
+      if (existing) { existing.addEventListener('load', resolve); existing.addEventListener('error', reject); return; }
+      const script = document.createElement('script');
+      script.id = 'gsiScript'; script.src = 'https://accounts.google.com/gsi/client'; script.async = true; script.defer = true;
+      script.onload = resolve; script.onerror = reject;
+      document.head.appendChild(script);
+    });
+  }
+  function decodeJwt(token) {
+    try {
+      const payload = token.split('.')[1];
+      const json = decodeURIComponent(atob(payload.replace(/-/g,'+').replace(/_/g,'/')).split('').map(c => '%' + ('00'+c.charCodeAt(0).toString(16)).slice(-2)).join(''));
+      return JSON.parse(json);
+    } catch (e) { return null; }
+  }
+  function handleGoogleCredential(response) {
+    const payload = decodeJwt(response.credential);
+    if (!payload || !payload.email) { alert('Googleアカウント情報を読み取れませんでした。'); return; }
+    const person = people.find(p => p.googleEmail && p.googleEmail.toLowerCase() === payload.email.toLowerCase());
+    if (!person) { alert(`このGoogleアカウント（${payload.email}）は登録されていません。管理者にGoogleアカウントの登録を依頼してください。`); return; }
+    loggedInName = person.name;
+    renderAll();
+  }
+  async function initGoogleSignIn() {
+    if (!settings.googleClientId) { googleSignInArea.classList.add('hidden'); return; }
+    try {
+      await loadGoogleScript();
+      window.google.accounts.id.initialize({ client_id: settings.googleClientId, callback: handleGoogleCredential });
+      googleSignInButton.innerHTML = '';
+      window.google.accounts.id.renderButton(googleSignInButton, { theme: 'filled_black', shape: 'pill', text: 'signin_with', locale: 'ja' });
+      googleSignInArea.classList.remove('hidden');
+    } catch (e) {
+      console.error('Googleログインの読み込みに失敗しました', e);
+      googleSignInArea.classList.add('hidden');
+    }
+  }
+
+  async function pushToSheet(payload) {
+    if (!settings.sheetsWebhookUrl) return;
+    try {
+      await fetch(settings.sheetsWebhookUrl, {
+        method: 'POST', mode: 'no-cors',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify(payload)
+      });
+    } catch (e) { console.error('スプレッドシート連携エラー', e); }
+  }
+  summaryPersonSelect.addEventListener('change', () => { summaryPerson = summaryPersonSelect.value; renderSummaryTable(); });
+  summaryPrev.addEventListener('click', () => { summaryMonth = new Date(summaryMonth.getFullYear(), summaryMonth.getMonth() - 1, 1); renderSummaryTable(); });
+  summaryNext.addEventListener('click', () => { summaryMonth = new Date(summaryMonth.getFullYear(), summaryMonth.getMonth() + 1, 1); renderSummaryTable(); });
+
+  function computeLeaveInfo(hireDateStr) {
+    if (!hireDateStr) return null;
+    const hireDate = new Date(hireDateStr + 'T00:00:00'), today = new Date();
+    const grants = [];
+    const baseMilestones = [{m:6,d:10},{m:18,d:11},{m:30,d:12},{m:42,d:14},{m:54,d:16},{m:66,d:18}];
+    for (const bm of baseMilestones) { const gd = new Date(hireDate); gd.setMonth(gd.getMonth() + bm.m); grants.push({ date: gd, days: bm.d }); }
+    let mc = 78;
+    while (mc <= 600) { const gd = new Date(hireDate); gd.setMonth(gd.getMonth() + mc); grants.push({ date: gd, days: 20 }); if (gd.getFullYear() > today.getFullYear() + 1) break; mc += 12; }
+    const pastGrants = grants.filter(g => g.date <= today), futureGrants = grants.filter(g => g.date > today);
+    const totalGranted = pastGrants.reduce((s, g) => s + g.days, 0);
+    return { totalGranted, lastGrant: pastGrants[pastGrants.length-1] || null, nextGrant: futureGrants[0] || null };
+  }
+  function leaveUsedApproved(name) { return leaveRequests.filter(r => r.name === name && r.status === 'approved').reduce((s, r) => s + r.days, 0); }
+  function leaveBalance(name, hireDate) {
+    const info = computeLeaveInfo(hireDate) || { totalGranted: 0, lastGrant: null, nextGrant: null };
+    const used = leaveUsedApproved(name);
+    return { granted: info.totalGranted, used, remaining: info.totalGranted - used, lastGrant: info.lastGrant, nextGrant: info.nextGrant };
+  }
+
+  function renderLeaveInfo() {
+    const person = personByName(summaryPerson);
+    if (!person || !person.hireDate) { leaveInfo.innerHTML = ''; return; }
+    const bal = leaveBalance(summaryPerson, person.hireDate);
+    leaveInfo.innerHTML = `有給休暇（労基法39条・簡易計算／出勤率8割以上のフルタイム勤務を想定）：
+      付与累計 <strong>${bal.granted}日</strong>｜承認済み消化 <strong>${bal.used}日</strong>｜残り <strong>${bal.remaining}日</strong>｜
+      直近付与：${bal.lastGrant ? `${formatDateShort(bal.lastGrant.date)}（${bal.lastGrant.days}日）` : 'なし'}｜
+      次回付与予定：${bal.nextGrant ? `${formatDateShort(bal.nextGrant.date)}（${bal.nextGrant.days}日）` : '-'}
+      <br>※ 繰越・時効（2年）は未追跡です。`;
+  }
+
+  function aggregateSummaries(summaries) {
+    const agg = { totalMs:0, breakMs:0, workMs:0, within:0, legalWithinOT:0, legalOverOT:0, otTotal:0, otu36:0, holidayNonLegal:0, holidayLegal:0, nightMs:0, workDays:0, absentDays:0, holidayWorkDays:0 };
+    for (const s of summaries) {
+      agg.totalMs+=s.totalMs; agg.breakMs+=s.breakMs; agg.workMs+=s.workMs;
+      agg.within+=s.within; agg.legalWithinOT+=s.legalWithinOT; agg.legalOverOT+=s.legalOverOT;
+      agg.otTotal+=s.otTotal; agg.otu36+=s.otu36; agg.holidayNonLegal+=s.holidayNonLegal; agg.holidayLegal+=s.holidayLegal; agg.nightMs+=s.nightMs;
+      if (s.workClass==='出勤') agg.workDays++; else if (s.workClass==='欠勤') agg.absentDays++; else if (s.workClass==='休日出勤') agg.holidayWorkDays++;
+    }
+    return agg;
+  }
+  function renderAggregateRow(label, agg) {
+    return `<tr><td class="class-cell">${escapeHtml(label)}</td><td>${agg.workDays}</td><td>${agg.absentDays}</td><td>${agg.holidayWorkDays}</td>
+      <td>${formatHM(agg.totalMs)}</td><td>${formatHM(agg.breakMs)}</td><td>${formatHM(agg.workMs)}</td><td>${formatHM(agg.otTotal)}</td><td>${formatHM(agg.otu36)}</td>
+      <td>${formatHM(agg.within)}</td><td>${formatHM(agg.legalWithinOT)}</td><td>${formatHM(agg.legalOverOT)}</td>
+      <td>${formatHM(agg.holidayNonLegal)}</td><td>${formatHM(agg.holidayLegal)}</td><td>${formatHM(agg.nightMs)}</td></tr>`;
+  }
+  function daySummariesForMonth(name, year, month) {
+    const totalDays = new Date(year, month+1, 0).getDate(); const list = [];
+    for (let d=1; d<=totalDays; d++) { const dStr = `${year}-${pad(month+1)}-${pad(d)}`; list.push({ dStr, s: computeDaySummary(dStr, recordsForPersonDay(name, dStr)) }); }
+    return list;
+  }
+  function renderDailyTable() {
+    const year = summaryMonth.getFullYear(), month = summaryMonth.getMonth();
+    const items = daySummariesForMonth(summaryPerson, year, month);
+    let html = '';
+    for (const { dStr, s } of items) {
+      const d = new Date(dStr + 'T00:00:00');
+      const dateCell = d.toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric', weekday: 'short' });
+      const inText = s.clockInTime ? `${pad(s.clockInTime.getHours())}:${pad(s.clockInTime.getMinutes())}` : '-';
+      const outText = s.clockOutTime ? `${pad(s.clockOutTime.getHours())}:${pad(s.clockOutTime.getMinutes())}` : (s.stillOpen ? '勤務中' : '-');
+      html += `<tr><td>${dateCell}</td><td class="class-cell">${s.workClass}</td><td class="class-cell">${s.scheduledType}</td><td>${inText}</td><td>${outText}</td>
+        <td>${formatHM(s.totalMs)}</td><td>${formatHM(s.breakMs)}</td><td>${formatHM(s.otTotal)}</td><td>${formatHM(s.otu36)}</td>
+        <td>${formatHM(s.workMs)}</td><td>${formatHM(s.within)}</td><td>${formatHM(s.legalWithinOT)}</td><td>${formatHM(s.legalOverOT)}</td>
+        <td>${formatHM(s.holidayNonLegal)}</td><td>${formatHM(s.holidayLegal)}</td><td>${formatHM(s.nightMs)}</td><td class="loc-cell">${s.location ? escapeHtml(s.location) : '-'}</td></tr>`;
+    }
+    summaryTbody.innerHTML = html;
+  }
+  function renderWeeklyAgg() {
+    const year = summaryMonth.getFullYear(), month = summaryMonth.getMonth();
+    const items = daySummariesForMonth(summaryPerson, year, month);
+    const weeks = []; let cur = [];
+    for (const it of items) {
+      const wd = new Date(it.dStr + 'T00:00:00').getDay();
+      if (wd === 0 && cur.length) { weeks.push(cur); cur = []; }
+      cur.push(it);
+    }
+    if (cur.length) weeks.push(cur);
+    let html = '';
+    for (const week of weeks) {
+      const agg = aggregateSummaries(week.map(w => w.s));
+      const first = new Date(week[0].dStr + 'T00:00:00'), last = new Date(week[week.length-1].dStr + 'T00:00:00');
+      html += renderAggregateRow(`${first.getMonth()+1}/${first.getDate()}〜${last.getMonth()+1}/${last.getDate()}`, agg);
+    }
+    aggregateTbody.innerHTML = html;
+  }
+  function renderMonthlyAgg() {
+    const year = summaryMonth.getFullYear(), month = summaryMonth.getMonth();
+    const items = daySummariesForMonth(summaryPerson, year, month);
+    const agg = aggregateSummaries(items.map(i => i.s));
+    aggregateTbody.innerHTML = renderAggregateRow(`${year}年${month+1}月 合計`, agg);
+  }
+  function renderYearlyAgg() {
+    let html = '', grand = aggregateSummaries([]);
+    for (let m = 0; m < 12; m++) {
+      const items = daySummariesForMonth(summaryPerson, summaryYear, m);
+      const agg = aggregateSummaries(items.map(i => i.s));
+      html += renderAggregateRow(`${m+1}月`, agg);
+      for (const k in grand) grand[k] += agg[k];
+    }
+    html += renderAggregateRow('年間合計', grand);
+    aggregateTbody.innerHTML = html;
+  }
+
+  function exportCsv() {
+    if (!summaryPerson) return;
+    const year = summaryMonth.getFullYear(), month = summaryMonth.getMonth();
+    const headers = ['日付','勤務区分','所定勤務区分','出勤時刻','退勤時刻','総労働時間','休憩時間','残業時間','残業時間:36','実働時間','所定内労働','法定内時間外労働','法定時間外労働','法定外休日労働','法定休日労働','深夜労働','勤務場所'];
+    const rows = [headers];
+    const items = daySummariesForMonth(summaryPerson, year, month);
+    const weekdayJa = ['日','月','火','水','木','金','土'];
+    for (const { dStr, s } of items) {
+      const d = new Date(dStr + 'T00:00:00');
+      const dateCell = `${d.getMonth()+1}/${d.getDate()}(${weekdayJa[d.getDay()]})`;
+      const inText = s.clockInTime ? `${pad(s.clockInTime.getHours())}:${pad(s.clockInTime.getMinutes())}` : '';
+      const outText = s.clockOutTime ? `${pad(s.clockOutTime.getHours())}:${pad(s.clockOutTime.getMinutes())}` : (s.stillOpen ? '勤務中' : '');
+      rows.push([dateCell, s.workClass, s.scheduledType, inText, outText, formatHM(s.totalMs), formatHM(s.breakMs), formatHM(s.otTotal), formatHM(s.otu36), formatHM(s.workMs), formatHM(s.within), formatHM(s.legalWithinOT), formatHM(s.legalOverOT), formatHM(s.holidayNonLegal), formatHM(s.holidayLegal), formatHM(s.nightMs), s.location || '']);
+    }
+    const agg = aggregateSummaries(items.map(i => i.s));
+    rows.push([
+      `${year}年${month+1}月 合計`, `出勤${agg.workDays}日`, `欠勤${agg.absentDays}日`, '', '',
+      formatHM(agg.totalMs), formatHM(agg.breakMs), formatHM(agg.otTotal), formatHM(agg.otu36), formatHM(agg.workMs),
+      formatHM(agg.within), formatHM(agg.legalWithinOT), formatHM(agg.legalOverOT),
+      formatHM(agg.holidayNonLegal), formatHM(agg.holidayLegal), formatHM(agg.nightMs), ''
+    ]);
+    const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(',')).join('\r\n');
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `タイムカード_${summaryPerson}_${year}-${pad(month+1)}.csv`;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+  exportCsvBtn.addEventListener('click', exportCsv);
+
+  function renderSummaryTable() {
+    if (!isAdmin) return;
+    populateSettingsForm();
+    const prev = summaryPerson;
+    summaryPersonSelect.innerHTML = people.map(p => `<option value="${escapeHtml(p.name)}">${escapeHtml(p.name)}</option>`).join('');
+    periodToggle.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.period === periodView));
+    monthNavWrap.classList.toggle('hidden', periodView === 'yearly');
+    yearNavWrap.classList.toggle('hidden', periodView !== 'yearly');
+    dailyTableWrap.classList.toggle('hidden', periodView !== 'daily');
+    aggregateTableWrap.classList.toggle('hidden', periodView === 'daily');
+
+    if (people.length === 0) {
+      summaryPerson = null; summaryMonthLabel.textContent = '-'; summaryYearLabel.textContent = '-';
+      summaryTbody.innerHTML = `<tr><td colspan="17" class="empty-state">従業員が登録されていません。</td></tr>`;
+      aggregateTbody.innerHTML = `<tr><td colspan="15" class="empty-state">従業員が登録されていません。</td></tr>`;
+      leaveInfo.innerHTML = ''; return;
+    }
+    summaryPerson = (prev && people.some(p => p.name === prev)) ? prev : people[0].name;
+    summaryPersonSelect.value = summaryPerson;
+    renderLeaveInfo();
+    summaryMonthLabel.textContent = `${summaryMonth.getFullYear()}年${summaryMonth.getMonth()+1}月`;
+    summaryYearLabel.textContent = `${summaryYear}年`;
+
+    if (periodView === 'daily') renderDailyTable();
+    else if (periodView === 'weekly') renderWeeklyAgg();
+    else if (periodView === 'monthly') renderMonthlyAgg();
+    else renderYearlyAgg();
+  }
+
+  function computeMissingPunchAlerts() {
+    const today = new Date(); today.setHours(0,0,0,0);
+    const alerts = [];
+    for (const p of people) {
+      const hireDate = p.hireDate ? new Date(p.hireDate + 'T00:00:00') : null;
+      for (let back = 1; back <= 7; back++) {
+        const d = new Date(today); d.setDate(d.getDate() - back);
+        if (hireDate && d < hireDate) continue;
+        const weekday = d.getDay();
+        if (weekday === settings.legalHolidayWeekday || weekday === settings.scheduledHolidayWeekday) continue;
+        const key = dateKey(d);
+        if (!recordsForDay(key).some(r => r.name === p.name)) alerts.push({ name: p.name, date: d, dateStr: key });
+      }
+    }
+    return alerts.sort((a,b) => new Date(b.date) - new Date(a.date));
+  }
+  function renderAlerts() {
+    if (!isAdmin) return;
+    const alerts = computeMissingPunchAlerts();
+    if (alerts.length === 0) { alertsList.innerHTML = '<div class="empty-state">直近7日間で未打刻は見つかりませんでした。</div>'; return; }
+    alertsList.innerHTML = alerts.map(a => {
+      const label = formatDateHeader(a.date);
+      return `<div class="alert-card"><div class="alert-title">${escapeHtml(a.name)}さん：${label}の打刻がありません</div></div>`;
+    }).join('');
+  }
+
+  leaveRequestToggleBtn.addEventListener('click', () => {
+    leaveRequestForm.classList.remove('hidden');
+    leaveDateInput.value = ''; leaveReasonInput.value = '';
+  });
+  leaveCancelBtn.addEventListener('click', () => leaveRequestForm.classList.add('hidden'));
+  leaveSubmitBtn.addEventListener('click', async () => {
+    if (!loggedInName) return;
+    const date = leaveDateInput.value;
+    const days = parseFloat(leaveDaysSelect.value);
+    const reason = leaveReasonInput.value.trim();
+    if (!date) { alert('取得希望日を選択してください。'); return; }
+    leaveRequests.push({ id: uid(), name: loggedInName, date, days, reason, status: 'pending', requestedAt: new Date().toISOString() });
+    leaveRequestForm.classList.add('hidden');
+    renderAll(); await saveData();
+  });
+  function renderLeavePanel() {
+    if (isAdmin || !loggedInName) { leavePanel.classList.add('hidden'); return; }
+    leavePanel.classList.remove('hidden');
+    const person = personByName(loggedInName);
+    const bal = leaveBalance(loggedInName, person ? person.hireDate : null);
+    leaveBalanceText.textContent = `有給休暇 残り ${bal.remaining} 日（付与累計${bal.granted}日／消化${bal.used}日）`;
+    const mine = leaveRequests.filter(r => r.name === loggedInName).sort((a,b) => new Date(b.requestedAt) - new Date(a.requestedAt));
+    leaveHistoryList.innerHTML = mine.length === 0 ? '<div class="empty-state">申請履歴はありません。</div>' : mine.map(r => {
+      const label = r.status === 'pending' ? '申請中' : r.status === 'approved' ? '承認済み' : '却下';
+      return `<div class="log-entry"><div class="log-row"><span class="log-time">${r.date}</span><span class="log-type">${r.days}日</span><span class="log-duration">${label}</span></div>${r.reason ? `<div class="log-location">${escapeHtml(r.reason)}</div>` : ''}</div>`;
+    }).join('');
+  }
+  async function decideLeaveRequest(id, decision) {
+    const req = leaveRequests.find(r => r.id === id);
+    if (!req) return;
+    req.status = decision; req.decidedAt = new Date().toISOString();
+    renderAll(); await saveData();
+  }
+  function renderLeaveAdminTab() {
+    if (!isAdmin) return;
+    const sorted = leaveRequests.slice().sort((a,b) => new Date(b.requestedAt) - new Date(a.requestedAt));
+    if (sorted.length === 0) { leaveAdminList.innerHTML = '<div class="empty-state">申請はまだありません。</div>'; return; }
+    leaveAdminList.innerHTML = sorted.map(r => {
+      const label = r.status === 'pending' ? '申請中' : r.status === 'approved' ? '承認済み' : '却下';
+      const actions = r.status === 'pending' ? `<button class="link-btn approve-btn" data-id="${r.id}">承認</button> <button class="link-btn reject-btn" data-id="${r.id}">却下</button>` : '';
+      return `<div class="alert-card"><div class="alert-title">${escapeHtml(r.name)}さん：${r.date}（${r.days}日）</div>
+        <div class="alert-meta">申請日時：${new Date(r.requestedAt).toLocaleString('ja-JP')}｜状態：${label}${r.reason ? `｜理由：${escapeHtml(r.reason)}` : ''}</div>${actions}</div>`;
+    }).join('');
+    leaveAdminList.querySelectorAll('.approve-btn').forEach(b => b.addEventListener('click', () => decideLeaveRequest(b.dataset.id, 'approved')));
+    leaveAdminList.querySelectorAll('.reject-btn').forEach(b => b.addEventListener('click', () => decideLeaveRequest(b.dataset.id, 'rejected')));
+  }
+
+  function messagesFor(name) {
+    return adminMessages.filter(m => m.target === 'all' || m.target === name).sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt));
+  }
+  function renderNoticesPanel() {
+    const name = activeName();
+    if (!name) { noticesPanel.classList.add('hidden'); noticesPanel.innerHTML = ''; return; }
+    const missing = computeMissingPunchAlerts().filter(a => a.name === name);
+    const msgs = messagesFor(name);
+    if (missing.length === 0 && msgs.length === 0) { noticesPanel.classList.add('hidden'); noticesPanel.innerHTML = ''; return; }
+    noticesPanel.classList.remove('hidden');
+    let html = '';
+    if (missing.length) {
+      html += `<div class="notice-error">${missing.map(a => `⚠️ ${formatDateHeader(a.date)}の打刻がありません。管理者にご確認ください。`).join('<br>')}</div>`;
+    }
+    html += msgs.map(m => `<div class="notice-message">📢 ${escapeHtml(m.text)}<div class="notice-meta">${new Date(m.createdAt).toLocaleString('ja-JP')}</div></div>`).join('');
+    noticesPanel.innerHTML = html;
+  }
+
+  noticeSendBtn.addEventListener('click', async () => {
+    const text = noticeTextInput.value.trim();
+    if (!text) { alert('メッセージを入力してください。'); return; }
+    adminMessages.push({ id: uid(), text, target: noticeTargetSelect.value, createdAt: new Date().toISOString() });
+    noticeTextInput.value = '';
+    renderAll(); await saveData();
+  });
+  function renderNoticesAdminSection() {
+    if (!isAdmin) return;
+    const prevTarget = noticeTargetSelect.value;
+    noticeTargetSelect.innerHTML = '<option value="all">全員</option>' + people.map(p => `<option value="${escapeHtml(p.name)}">${escapeHtml(p.name)}</option>`).join('');
+    if (prevTarget && [...noticeTargetSelect.options].some(o => o.value === prevTarget)) noticeTargetSelect.value = prevTarget;
+    const sorted = adminMessages.slice().sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt));
+    if (sorted.length === 0) { noticeList.innerHTML = '<div class="empty-state">送信したお知らせはありません。</div>'; return; }
+    noticeList.innerHTML = sorted.map(m => {
+      const targetLabel = m.target === 'all' ? '全員' : escapeHtml(m.target);
+      return `<div class="alert-card"><div class="alert-title">${targetLabel}へ：${escapeHtml(m.text)}</div>
+        <div class="alert-meta">${new Date(m.createdAt).toLocaleString('ja-JP')}</div>
+        <button class="link-btn delete-notice-btn" data-id="${m.id}">削除</button></div>`;
+    }).join('');
+    noticeList.querySelectorAll('.delete-notice-btn').forEach(b => b.addEventListener('click', async () => {
+      adminMessages = adminMessages.filter(x => x.id !== b.dataset.id);
+      renderAll(); await saveData();
+    }));
+  }
+
+  function renderDashboard() {
+    if (!isAdmin) return;
+    const todayKey = dateKey(new Date());
+    let workingCount = 0, notWorkingCount = 0;
+    for (const p of people) {
+      if (recordsForDay(todayKey).some(r => r.name === p.name)) workingCount++; else notWorkingCount++;
+    }
+    const missingCount = computeMissingPunchAlerts().length;
+    const pendingLeaveCount = leaveRequests.filter(r => r.status === 'pending').length;
+
+    dashGrid.innerHTML = `
+      <div class="dash-stat"><div class="dash-value">${workingCount}</div><div class="dash-label">本日 出勤あり</div></div>
+      <div class="dash-stat"><div class="dash-value">${notWorkingCount}</div><div class="dash-label">本日 未出勤</div></div>
+      <div class="dash-stat ${missingCount > 0 ? 'danger' : ''}"><div class="dash-value">${missingCount}</div><div class="dash-label">未打刻アラート</div></div>
+      <div class="dash-stat ${pendingLeaveCount > 0 ? 'warn' : ''}"><div class="dash-value">${pendingLeaveCount}</div><div class="dash-label">有給申請 未承認</div></div>
+    `;
+
+    const now = new Date();
+    const totals = people.map(p => {
+      const items = daySummariesForMonth(p.name, now.getFullYear(), now.getMonth());
+      const agg = aggregateSummaries(items.map(i => i.s));
+      return { name: p.name, ot: agg.otTotal };
+    }).filter(t => t.ot > 0).sort((a, b) => b.ot - a.ot).slice(0, 5);
+
+    dashOvertimeList.innerHTML = totals.length === 0
+      ? '<div class="empty-state">今月の残業はまだありません。</div>'
+      : totals.map(t => `<div class="dash-rank-row"><span class="dash-rank-name">${escapeHtml(t.name)}</span><span class="dash-rank-value">${formatHM(t.ot)}</span></div>`).join('');
+
+    const recent = records.slice().sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)).slice(0, 8);
+    dashRecentList.innerHTML = recent.length === 0
+      ? '<div class="empty-state">まだ打刻がありません。</div>'
+      : recent.map(r => {
+          const t = new Date(r.timestamp);
+          return `<div class="dash-rank-row"><span class="dash-rank-name">${escapeHtml(r.name)}（${r.type === 'in' ? '出勤' : '退勤'}）</span><span class="dash-rank-value">${pad(t.getMonth() + 1)}/${pad(t.getDate())} ${pad(t.getHours())}:${pad(t.getMinutes())}</span></div>`;
+        }).join('');
+  }
+
+  function renderModeChrome() {
+    cardLabel.textContent = isAdmin ? 'タイムカード（管理者モード）' : 'タイムカード';
+    cardLabel.classList.toggle('admin-active', isAdmin);
+    adminToggleBtn.textContent = isAdmin ? '一般モードに戻る' : '管理者モード';
+    pinChangeBtn.style.display = isAdmin ? 'inline' : 'none';
+    addForm.classList.add('hidden');
+    adminPeopleArea.classList.toggle('hidden', !isAdmin);
+    loginGate.classList.toggle('hidden', isAdmin || !!loggedInName);
+    if (isAdmin || loggedInName) loginBirthdateForm.classList.add('hidden');
+    personalHeader.classList.toggle('hidden', isAdmin || !loggedInName);
+    if (!isAdmin && loggedInName) personalGreeting.textContent = `${loggedInName}さんとしてログイン中`;
+    const showPunchArea = isAdmin || !!loggedInName;
+    punchArea.classList.toggle('hidden', !showPunchArea);
+    cardBottom.classList.toggle('hidden', !showPunchArea);
+    adminTabBar.classList.toggle('hidden', !isAdmin);
+    adminTabBar.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === activeTab));
+    historyView.classList.toggle('hidden', !(!isAdmin || activeTab === 'history'));
+    dashboardSection.classList.toggle('hidden', !(isAdmin && activeTab === 'dashboard'));
+    reportSection.classList.toggle('hidden', !(isAdmin && activeTab === 'report'));
+    summarySection.classList.toggle('hidden', !(isAdmin && activeTab === 'summary'));
+    leaveAdminSection.classList.toggle('hidden', !(isAdmin && activeTab === 'leave'));
+    noticesAdminSection.classList.toggle('hidden', !(isAdmin && activeTab === 'notices'));
+    alertsSection.classList.toggle('hidden', !(isAdmin && activeTab === 'alerts'));
+  }
+
+  function renderAll() {
+    tickClock();
+    renderModeChrome();
+    renderDashboard();
+    renderAdminPeople();
+    renderLoginRow();
+    renderButton();
+    renderLog();
+    renderCalendar();
+    renderReportTable();
+    renderSummaryTable();
+    renderLeavePanel();
+    renderLeaveAdminTab();
+    renderNoticesPanel();
+    renderNoticesAdminSection();
+    renderAlerts();
+  }
+
+  async function handlePunch() {
+    const name = activeName();
+    if (!name) return;
+    const status = statusFor(name);
+    const type = status === 'out' ? 'in' : 'out';
+    let location = null;
+    if (type === 'in') {
+      location = locationInput.value.trim();
+      if (!location) { alert('本日の勤務場所を入力してください。'); return; }
+    }
+    punchBtn.disabled = true; punchBtn.textContent = '位置情報を確認中…';
+    const geoResult = await getGeoLocation();
+    let geo = null;
+    if (geoResult.error) {
+      if (geoResult.error === 'denied') {
+        console.warn('位置情報の利用が許可されませんでした。iPhoneの場合は「設定」→「プライバシーとセキュリティ」→「位置情報サービス」→Safariの権限をご確認ください。');
+      }
+    } else {
+      geo = geoResult;
+      punchBtn.textContent = '住所を確認中…';
+      geo.address = await reverseGeocodeAddress(geo.lat, geo.lng);
+    }
+    records.push({ id: uid(), name, type, timestamp: new Date().toISOString(), location: type === 'in' ? location : null, geo });
+    pushToSheet({ type: 'punch', name, punchType: type, timestamp: new Date().toISOString(), location: type === 'in' ? location : null, address: geo ? geo.address : null });
+    punchBtn.classList.remove('stamped'); void punchBtn.offsetWidth; punchBtn.classList.add('stamped');
+    if (type === 'in') locationInput.value = '';
+    renderAll(); await saveData();
+  }
+  async function handleUndo() { if (!isAdmin || records.length === 0) return; records.pop(); renderAll(); await saveData(); }
+  punchBtn.addEventListener('click', handlePunch);
+  locationInput.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); handlePunch(); } });
+  undoBtn.addEventListener('click', handleUndo);
+
+  (async function init() {
+    const data = await loadData();
+    people = data.people; records = data.records; editHistory = data.editHistory; leaveRequests = data.leaveRequests;
+    adminPin = data.adminPin; settings = data.settings;
+    selectedDay = dateKey(new Date());
+    loaded = true;
+    renderAll();
+    initGoogleSignIn();
+    setInterval(tickClock, 1000);
+  })();
+</script>
+
+</body>
+</html>
