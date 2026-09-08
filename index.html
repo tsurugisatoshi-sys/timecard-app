@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="タイムカード">
@@ -56,6 +57,8 @@
   .chip.selected { background: var(--grad-primary); border-color: transparent; color: #fff; box-shadow: 0 6px 16px -6px rgba(79,70,229,0.5); }
   .chip .remove { font-size: 12px; line-height: 1; opacity: 0.6; padding-left: 2px; }
   .chip .remove:hover { opacity: 1; }
+  .chip .edit { font-size: 12px; line-height: 1; opacity: 0.6; padding-left: 2px; }
+  .chip .edit:hover { opacity: 1; color: var(--accent-2); }
   .chip.add-chip { border-style: dashed; color: var(--muted); background: transparent; }
   .inline-form { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 8px; text-align: left; }
   .inline-form input, .inline-form select {
@@ -254,6 +257,7 @@
         <div class="people-label">打刻する人を選択（管理者）</div>
         <div class="people-row" id="peopleRow"></div>
         <div class="inline-form hidden" id="addForm">
+          <div class="field-note" id="addFormTitle" style="font-weight:600; color:var(--ink); font-size:13px;">新しい人を登録</div>
           <input type="text" id="addName" placeholder="名前" maxlength="20">
           <input type="text" id="addBirthdate" placeholder="生年月日 例:19960821" maxlength="8" inputmode="numeric">
           <input type="date" id="addHireDate" title="入社日">
@@ -376,12 +380,10 @@
         </div>
 
         <div class="note-box">
-          Googleログインを使うには、Google Cloud ConsoleでOAuthクライアントIDを取得し、下記に貼り付けてください。このアプリが動作している画面のドメインを「承認済みのJavaScript生成元」に登録する必要があります。埋め込み環境によっては動作しない場合があります。<br>
-          スプレッドシート連携は、Google Apps Scriptで作成したウェブアプリのURLを貼り付けると、打刻のたびに自動送信されます（別途スクリプトの設置が必要です）。
+          このアプリは <strong>https://tsurugisatoshi-sys.github.io</strong> で公開されており、データはSupabaseに保存されています。どの端末で開いても同じデータが読み書きされます。Googleログインを使う場合は、Google Cloud ConsoleのOAuthクライアントID設定の「承認済みのJavaScript生成元」にこのドメイン（パスなし）を登録し、発行されたクライアントIDを下記に貼り付けてください。
         </div>
         <div class="settings-form">
           <div class="settings-field" style="width:260px;"><label for="googleClientIdInput">Google Client ID</label><input type="text" id="googleClientIdInput" style="width:100%;" placeholder="xxxx.apps.googleusercontent.com"></div>
-          <div class="settings-field" style="width:260px;"><label for="sheetsWebhookInput">スプレッドシート連携URL</label><input type="text" id="sheetsWebhookInput" style="width:100%;" placeholder="Apps Script ウェブアプリURL"></div>
           <button id="saveIntegrationsBtn">連携設定を保存</button>
         </div>
 
@@ -455,8 +457,14 @@
 </div>
 
 <script>
-  const STORAGE_KEY = 'timeclock:data';
-  const DEFAULT_SETTINGS = { scheduledHours: 8, legalHolidayWeekday: 0, scheduledHolidayWeekday: 6, googleClientId: '', sheetsWebhookUrl: 'https://script.google.com/macros/s/AKfycbzeELHzX8LEk0GAkUSEWbD-54wsB_GZum1qbsddzMNBoMBToizvAn7uOF6cksPDhXM1/exec' };
+  const SUPABASE_URL = 'https://zclijyympxwciovilklb.supabase.co';
+  const SUPABASE_ANON_KEY = 'sb_publishable_Aapqtpf2Qvnh5J8OiCqhGg_Uv_JRk9b';
+  const SUPABASE_HEADERS = {
+    apikey: SUPABASE_ANON_KEY,
+    Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+    'Content-Type': 'application/json'
+  };
+  const DEFAULT_SETTINGS = { scheduledHours: 8, legalHolidayWeekday: 0, scheduledHolidayWeekday: 6, googleClientId: '904408265857-qr36497ob7aud3hv47s7f6qk4vhe62ed.apps.googleusercontent.com' };
 
   let people = [];
   let records = [];
@@ -487,6 +495,7 @@
   const adminPeopleArea = document.getElementById('adminPeopleArea');
   const peopleRow = document.getElementById('peopleRow');
   const addForm = document.getElementById('addForm');
+  const addFormTitle = document.getElementById('addFormTitle');
   const addName = document.getElementById('addName');
   const addBirthdate = document.getElementById('addBirthdate');
   const addHireDate = document.getElementById('addHireDate');
@@ -547,7 +556,6 @@
   const scheduledHolidaySelect = document.getElementById('scheduledHolidaySelect');
   const saveSettingsBtn = document.getElementById('saveSettingsBtn');
   const googleClientIdInput = document.getElementById('googleClientIdInput');
-  const sheetsWebhookInput = document.getElementById('sheetsWebhookInput');
   const saveIntegrationsBtn = document.getElementById('saveIntegrationsBtn');
   const googleSignInArea = document.getElementById('googleSignInArea');
   const googleSignInButton = document.getElementById('googleSignInButton');
@@ -625,26 +633,34 @@
 
   async function loadData() {
     try {
-      const result = await window.storage.get(STORAGE_KEY, true);
-      if (result && result.value) {
-        const parsed = JSON.parse(result.value);
-        return {
-          people: (parsed.people || []).map(p => typeof p === 'string' ? { name: p, birthdate: '', hireDate: '', googleEmail: '' } : { name: p.name, birthdate: p.birthdate || '', hireDate: p.hireDate || '', googleEmail: p.googleEmail || '' }),
-          records: parsed.records || [],
-          editHistory: parsed.editHistory || [],
-          leaveRequests: parsed.leaveRequests || [],
-          adminMessages: parsed.adminMessages || [],
-          adminPin: parsed.adminPin || null,
-          settings: parsed.settings ? { ...DEFAULT_SETTINGS, ...parsed.settings } : { ...DEFAULT_SETTINGS }
-        };
-      }
-    } catch (e) { /* no existing data */ }
-    return { people: [], records: [], editHistory: [], leaveRequests: [], adminMessages: [], adminPin: null, settings: { ...DEFAULT_SETTINGS } };
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/state?id=eq.main&select=data`, { headers: SUPABASE_HEADERS });
+      if (!res.ok) throw new Error('load failed: ' + res.status);
+      const rows = await res.json();
+      const parsed = (rows[0] && rows[0].data) || {};
+      return {
+        people: (parsed.people || []).map(p => typeof p === 'string' ? { name: p, birthdate: '', hireDate: '', googleEmail: '' } : { name: p.name, birthdate: p.birthdate || '', hireDate: p.hireDate || '', googleEmail: p.googleEmail || '' }),
+        records: parsed.records || [],
+        editHistory: parsed.editHistory || [],
+        leaveRequests: parsed.leaveRequests || [],
+        adminMessages: parsed.adminMessages || [],
+        adminPin: parsed.adminPin || null,
+        settings: parsed.settings ? { ...DEFAULT_SETTINGS, ...parsed.settings } : { ...DEFAULT_SETTINGS }
+      };
+    } catch (e) {
+      console.error('データの読み込みに失敗しました', e);
+      alert('サーバーからデータを読み込めませんでした。インターネット接続を確認するか、しばらくしてから再度お試しください。');
+      return { people: [], records: [], editHistory: [], leaveRequests: [], adminMessages: [], adminPin: null, settings: { ...DEFAULT_SETTINGS } };
+    }
   }
   async function saveData() {
     try {
-      const ok = await window.storage.set(STORAGE_KEY, JSON.stringify({ people, records, editHistory, leaveRequests, adminMessages, adminPin, settings }), true);
-      if (!ok) console.error('保存に失敗しました');
+      const state = { people, records, editHistory, leaveRequests, adminMessages, adminPin, settings };
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/state`, {
+        method: 'POST',
+        headers: { ...SUPABASE_HEADERS, Prefer: 'resolution=merge-duplicates' },
+        body: JSON.stringify({ id: 'main', data: state })
+      });
+      if (!res.ok) console.error('保存に失敗しました', res.status, await res.text());
     } catch (e) { console.error('保存エラー', e); }
   }
 
@@ -690,8 +706,9 @@
     for (const p of people) {
       const chip = document.createElement('button');
       chip.className = 'chip' + (p.name === selected ? ' selected' : '');
-      chip.innerHTML = `<span>${escapeHtml(p.name)}</span><span class="remove" title="削除">×</span>`;
+      chip.innerHTML = `<span>${escapeHtml(p.name)}</span><span class="edit" title="編集">✎</span><span class="remove" title="削除">×</span>`;
       chip.querySelector('span:first-child').addEventListener('click', e => { e.stopPropagation(); selected = p.name; renderAll(); });
+      chip.querySelector('.edit').addEventListener('click', e => { e.stopPropagation(); openEditPerson(p.name); });
       chip.querySelector('.remove').addEventListener('click', async e => {
         e.stopPropagation(); people = people.filter(x => x.name !== p.name);
         if (selected === p.name) selected = people[0] ? people[0].name : null;
@@ -701,8 +718,28 @@
     }
     const addChip = document.createElement('button');
     addChip.className = 'chip add-chip'; addChip.textContent = '+ 追加';
-    addChip.addEventListener('click', () => { addForm.classList.remove('hidden'); addName.value=''; addBirthdate.value=''; addHireDate.value=''; addGoogleEmail.value=''; addName.focus(); });
+    addChip.addEventListener('click', () => {
+      editingPersonName = null;
+      addFormTitle.textContent = '新しい人を登録';
+      addConfirm.textContent = '登録';
+      addForm.classList.remove('hidden'); addName.value=''; addBirthdate.value=''; addHireDate.value=''; addGoogleEmail.value=''; addName.focus();
+    });
     peopleRow.appendChild(addChip);
+  }
+
+  let editingPersonName = null;
+  function openEditPerson(name) {
+    const p = personByName(name);
+    if (!p) return;
+    editingPersonName = name;
+    addFormTitle.textContent = `${p.name}さんの情報を編集`;
+    addConfirm.textContent = '更新';
+    addName.value = p.name;
+    addBirthdate.value = p.birthdate || '';
+    addHireDate.value = p.hireDate || '';
+    addGoogleEmail.value = p.googleEmail || '';
+    addForm.classList.remove('hidden');
+    addName.focus();
   }
 
   async function confirmAddPerson() {
@@ -712,13 +749,31 @@
     const y = +birthdate.slice(0,4), mo = +birthdate.slice(4,6), da = +birthdate.slice(6,8);
     const bd = new Date(y, mo-1, da);
     if (bd.getFullYear()!==y || bd.getMonth()!==mo-1 || bd.getDate()!==da) { alert('生年月日が正しい日付ではありません。'); return; }
-    if (people.some(p => p.name === name)) { alert('同じ名前がすでに登録されています。'); return; }
-    people.push({ name, birthdate, hireDate, googleEmail });
-    selected = name; addForm.classList.add('hidden');
+
+    if (editingPersonName) {
+      const dupe = people.some(p => p.name === name && p.name !== editingPersonName);
+      if (dupe) { alert('同じ名前がすでに登録されています。'); return; }
+      const target = personByName(editingPersonName);
+      target.name = name; target.birthdate = birthdate; target.hireDate = hireDate; target.googleEmail = googleEmail;
+      // rename references elsewhere if the name changed
+      if (name !== editingPersonName) {
+        records.forEach(r => { if (r.name === editingPersonName) r.name = name; });
+        leaveRequests.forEach(r => { if (r.name === editingPersonName) r.name = name; });
+        adminMessages.forEach(m => { if (m.target === editingPersonName) m.target = name; });
+        if (selected === editingPersonName) selected = name;
+        if (loggedInName === editingPersonName) loggedInName = name;
+      }
+      editingPersonName = null;
+    } else {
+      if (people.some(p => p.name === name)) { alert('同じ名前がすでに登録されています。'); return; }
+      people.push({ name, birthdate, hireDate, googleEmail });
+      selected = name;
+    }
+    addForm.classList.add('hidden');
     renderAll(); await saveData();
   }
   addConfirm.addEventListener('click', confirmAddPerson);
-  addCancel.addEventListener('click', () => addForm.classList.add('hidden'));
+  addCancel.addEventListener('click', () => { editingPersonName = null; addForm.classList.add('hidden'); });
 
   function renderLoginRow() {
     loginRow.innerHTML = '';
@@ -1033,7 +1088,6 @@
     legalHolidaySelect.value = String(settings.legalHolidayWeekday);
     scheduledHolidaySelect.value = String(settings.scheduledHolidayWeekday);
     googleClientIdInput.value = settings.googleClientId || '';
-    sheetsWebhookInput.value = settings.sheetsWebhookUrl || '';
   }
   saveSettingsBtn.addEventListener('click', async () => {
     const h = parseFloat(scheduledHoursInput.value);
@@ -1046,7 +1100,6 @@
   saveIntegrationsBtn.addEventListener('click', async () => {
     const prevClientId = settings.googleClientId;
     settings.googleClientId = googleClientIdInput.value.trim();
-    settings.sheetsWebhookUrl = sheetsWebhookInput.value.trim();
     await saveData();
     if (settings.googleClientId !== prevClientId) initGoogleSignIn();
     alert('連携設定を保存しました。');
@@ -1093,16 +1146,6 @@
     }
   }
 
-  async function pushToSheet(payload) {
-    if (!settings.sheetsWebhookUrl) return;
-    try {
-      await fetch(settings.sheetsWebhookUrl, {
-        method: 'POST', mode: 'no-cors',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify(payload)
-      });
-    } catch (e) { console.error('スプレッドシート連携エラー', e); }
-  }
   summaryPersonSelect.addEventListener('change', () => { summaryPerson = summaryPersonSelect.value; renderSummaryTable(); });
   summaryPrev.addEventListener('click', () => { summaryMonth = new Date(summaryMonth.getFullYear(), summaryMonth.getMonth() - 1, 1); renderSummaryTable(); });
   summaryNext.addEventListener('click', () => { summaryMonth = new Date(summaryMonth.getFullYear(), summaryMonth.getMonth() + 1, 1); renderSummaryTable(); });
@@ -1490,7 +1533,6 @@
       geo.address = await reverseGeocodeAddress(geo.lat, geo.lng);
     }
     records.push({ id: uid(), name, type, timestamp: new Date().toISOString(), location: type === 'in' ? location : null, geo });
-    pushToSheet({ type: 'punch', name, punchType: type, timestamp: new Date().toISOString(), location: type === 'in' ? location : null, address: geo ? geo.address : null });
     punchBtn.classList.remove('stamped'); void punchBtn.offsetWidth; punchBtn.classList.add('stamped');
     if (type === 'in') locationInput.value = '';
     renderAll(); await saveData();
